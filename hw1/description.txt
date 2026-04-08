@@ -1,0 +1,20 @@
+Description
+
+This instrument uses the gametrak to trigger notes from a scale.
+Scales are assigned to both the Left and Right gametrak cables, when the cable
+is brought above a certain Z threshold, it will trigger a note in the scale based on
+the cable's X position. Which channel the sound comes from is also determined by the
+X position. The sound will hold until the cable is brought below the Z axis trigger
+threshold.
+
+A custom Pulse Width Modulation Instrument class was made for the primary sounds.
+A Triangle oscillator is driving the PWM, and the frequency of this oscillator is
+changed over the course of the piece, and is controlled by the Y axis of the Gametrak cable.
+
+The Gametrak button is used to advance the piece, which will change the scales for each
+cable, as well as adjust the range of the PWM.
+
+
+How to run:
+
+`chuck -c8 main.ck`
