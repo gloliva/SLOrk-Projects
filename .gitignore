@@ -1,0 +1,6 @@
+# Scratch and example folders
+examples/
+scratch/
+
+# MacOS stuff
+.DS_Store
