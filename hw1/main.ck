@@ -117,24 +117,6 @@ gt.buttonPress => now;
 <<< "Section 5: Chaos" >>>;
 pwm.set(0.2, 120.);
 
+
 gt.buttonPress => now;
 <<< "Goodbye!" >>>;
-me.exit();
-
-
-
-
-// TODO: use the below part if you don't have a button
-// Play the piece of music
-20::second => now;
-<<< "Changing notes" >>>;
-seqLeft.notes([45, 52, 57]);
-seqRight.notes([57, 60, 62, 64, 69]);
-20::second => now;
-
-20::second => now;
-<<< "Changing notes" >>>;
-seqLeft.notes([48, 55, 58]);
-seqRight.notes([60, 61, 63, 65, 67, 68, 71, 72]);
-
-eon => now;

@@ -51,12 +51,12 @@ public class PulseWidthOsc extends Instrument {
 public class PWMUpdates {
     float low;
     float high;
-    
+
     fun @construct(float l, float h) {
         l => this.low;
         h => this.high;
     }
-    
+
     fun void set(float l, float h) {
         l => this.low;
         h => this.high;
