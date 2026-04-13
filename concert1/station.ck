@@ -79,10 +79,15 @@ Station station;
 spork ~ station.interact();
 
 while (true) {
-    5::second => now;
+    <<< "Station healthy" >>>;
+    3::second => now;
     if (!station.damaged) {
-        <<< "damaging station" >>>;
+        <<< "Damaging station" >>>;
         station.damage();
+    }
+
+    while (station.damaged) {
+        10::ms => now;
     }
 }
 
