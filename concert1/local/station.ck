@@ -3,7 +3,7 @@
 
 public class Station {
     // Station audio
-    SinOsc oscs[3];
+    SawOsc oscs[3];
 
     // Keyboard handling
     int keyIdx;
@@ -20,8 +20,8 @@ public class Station {
         329.63 => this.oscs[1].freq;
         392.00 => this.oscs[2].freq;
 
-        for (SinOsc osc : this.oscs) {
-            0.3 => osc.gain;
+        for (SawOsc osc : this.oscs) {
+            0.1 => osc.gain;
             osc => dac;
         }
 
@@ -73,6 +73,27 @@ public class Station {
         0 => this.damaged;
     }
 }
+
+/*
+SndBuf2 buf1("/Users/gloliva/Downloads/among-us/assets/ElectricHum_BW.44833.wav");
+SndBuf2 buf2("/Users/gloliva/Downloads/among-us/assets/SciFiWorkshop_S08SF.1719.wav");
+
+1 => buf1.loop;
+1 => buf2.loop;
+
+buf1 => Gain gains[2];
+buf2 => gains;
+
+0.3 => gains[0].gain;
+0.3 => gains[1].gain;
+
+gains[0] => NRev revL => dac.chan(0);
+gains[1] => NRev revR => dac.chan(1);
+
+
+buf1.play(1.);
+buf2.play(1.);
+*/
 
 
 Station station;
