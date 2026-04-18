@@ -38,7 +38,7 @@ fun void makeMusic(int startIdx, Sequence seq, PWMUpdates pwm) {
     PulseWidthOsc osc[NUM_CHANNELS];
     ADSR env[NUM_CHANNELS] => NRev rev[NUM_CHANNELS];
 
-    for (int i; i < 6; i++) {
+    for (int i; i < NUM_CHANNELS; i++) {
         // Connect osc instrument to the DAC chain
         osc[i].out => env[i];
 
