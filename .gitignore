@@ -1,6 +1,11 @@
 # Scratch and example folders
 examples/
 scratch/
+local/
+test/
+
+# Ignore large audio files
+assets/
 
 # MacOS stuff
 .DS_Store
