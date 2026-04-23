@@ -4,19 +4,23 @@
 @import "../lib/util.ck"
 @import "../lib/global.ck"
 
+// Globals and state management
 Global.gt @=> GameTrak @ gt;
-
+Global.state @=> StationState @ stationState;
+StationState.STATION => stationState.currState;
 CaptainState.NONE => int state;
+Envelope masterGain => dac;
+1. => masterGain.value;
 
-SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => dac;
+SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => masterGain;
 phone.loop(true);
 phoneGain.gain(0);
 
-SndBuf radio(me.dir() + "../assets/radio.wav") => Gain radioGain => dac;
+SndBuf radio(me.dir() + "../assets/radio.wav") => Gain radioGain => masterGain;
 radio.loop(true);
 radioGain.gain(0);
 
-SndBuf engineBuf(me.dir() + "../assets/engineThrust.wav") => LPF engineLPF => HPF engineHPF => Gain engineGain => PoleZero blocker => dac;
+SndBuf engineBuf(me.dir() + "../assets/engineThrust.wav") => LPF engineLPF => HPF engineHPF => Gain engineGain => PoleZero blocker => masterGain;
 engineBuf.loop(true);
 0 => engineGain.gain;
 2000. => engineLPF.freq;
@@ -25,10 +29,10 @@ engineBuf.loop(true);
 0.5 => engineHPF.Q;
 .95 => blocker.blockZero;
 
-0.05 => float engineDeadzone;
-0.05 => float engineZThreshold;
+0.03 => float engineDeadzone;
+0.03 => float engineZThreshold;
 
-CNoise engineNoise("white") => LPF engineFilter => NRev engineRev => Gain engineNoiseGain => dac;
+CNoise engineNoise("white") => LPF engineFilter => NRev engineRev => Gain engineNoiseGain => masterGain;
 0 => engineNoiseGain.gain;
 0.08 => engineRev.mix;
 100. => engineFilter.freq;
@@ -94,8 +98,8 @@ fun void gtHandler() {
         // z axis
         if (gt.axis[2] >= zThreshold && !walkieTalkie) {
             true => walkieTalkie;
-            spork ~ Snd.play(me.dir() + "../assets/start-walkie-talkie.wav") @=> startWTShred;
-            spork ~ Snd.loop(me.dir() + "../assets/walkie-talkie.wav", 0.5) @=> loopWTShred;
+            spork ~ Snd.play(me.dir() + "../assets/start-walkie-talkie.wav", 1., masterGain) @=> startWTShred;
+            spork ~ Snd.loop(me.dir() + "../assets/walkie-talkie.wav", 0.5, masterGain) @=> loopWTShred;
         } else if (gt.axis[2] < zThreshold && walkieTalkie) {
             false => walkieTalkie;
             if (startWTShred != null) startWTShred.exit();
@@ -118,6 +122,22 @@ fun void stateHandler() {
     }
 } spork ~ stateHandler();
 
+
+// Handle program transitions
 while (true) {
-    10::ms => now;
+    // Wait for state transition
+    gt.buttonPress => now;
+    stationState.transition();
+
+    if (stationState.currState == stationState.BLACKHOLE) {
+        <<< "Inside Captain, turning Captain OFF" >>>;
+        masterGain.ramp(5::second, 0.0);
+
+        // Lock shred to prevent any more state transitions
+        stationState.lock();
+
+        // Add shephard generator shred + bell shred
+        Machine.add(me.dir() + "/../blackhole/shephard.ck");
+        Machine.add(me.dir() + "/../blackhole/bells.ck");
+    }
 }

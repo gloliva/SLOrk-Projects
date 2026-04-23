@@ -145,9 +145,21 @@ public class Station {
         crashEnv.keyOff(1);
     }
 
-    fun void interact() {
+    fun void interact(Envelope master[]) {
         while (true) {
             this.kb.event => now;
+
+            // Check if adjusting volume
+            if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.data == Keyboard.UP_ARROW) {
+                for (Envelope env : master) {
+                    env.ramp(20::second, 1.);
+                }
+            } else if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.data == Keyboard.DOWN_ARROW) {
+                for (Envelope env : master) {
+                    env.ramp(5::second, 0.);
+                }
+            }
+
             // Check if repairing station
             if (this.damaged) {
                 if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.key == "R".charAt(0)) {
@@ -232,7 +244,7 @@ fun void updateMachinery() {
 
 // Initialize repair station and enable keyboard interaction
 Station station(master, machineRate);
-spork ~ station.interact();
+spork ~ station.interact(master);
 
 
 while (true) {

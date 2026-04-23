@@ -110,10 +110,10 @@ public class Airlock {
         this.noise => this.thresh => this.bpf => this.adsr => this.rev => master => dac;
 
         // set params
-        0.2 => this.thresh.gain;
+        0.05 => this.thresh.gain;
         0.2 => this.rev.mix;
         8. => this.bpf.Q;
-        3. => this.adsr.gain;
+        2. => this.adsr.gain;
         this.adsr.set(20::ms, 180::ms, 0.15, 350::ms);
     }
 
