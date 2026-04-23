@@ -257,10 +257,7 @@ while (true) {
             env.ramp(5::second, 0.);
         }
     } else if (state.currState == state.STATION) {
-        <<< "Inside Repair Station, turning station ON" >>>;
-        for (Envelope env : master) {
-            env.ramp(20::second, 1.);
-        }
+        <<< "Inside Repair Station, doing nothing for now..." >>>;
     } else if (state.currState == state.BLACKHOLE) {
         for (Envelope env : master) {
             env.ramp(5::second, 0.);

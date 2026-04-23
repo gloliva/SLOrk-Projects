@@ -76,7 +76,7 @@ fun void gtHandler() {
     }
 
     while (true) {
-        Util.scalef(gt.axis[0], -1., 1., 5, 0.05, 0.5)::second => T;
+        Util.scalef(gt.axis[0], -1., 1., 0.05, 5., 0.5)::second => T;
 
         if (gt.axis[2] < gt.deadzone + 0.05) {
             0 => sequencing;
