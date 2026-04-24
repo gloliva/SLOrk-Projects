@@ -9,3 +9,6 @@ assets/
 
 # MacOS stuff
 .DS_Store
+
+# ChuGL stuff
+imgui.ini

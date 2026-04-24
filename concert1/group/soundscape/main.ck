@@ -38,7 +38,7 @@ spaceshipMaster.value(0.);
 4 => int maxVoices;
 SawOsc oscs[0];
 float baseFreqs[0];
-0.12 => float voiceGain;
+1 => float voiceGain;
 
 // form chords
 for (0 => int i; i < maxVoices; i++)
@@ -217,7 +217,7 @@ fun void print()
     }
 }
 
-//spork ~ print();
+spork ~ print();
 
 fun void axesHandler() {
     while (true) {
@@ -254,7 +254,7 @@ fun void axesHandler() {
             bottle.noteOff(1);
         } else {
             // right handle's z => gain [-1,1] => [0,1]
-            (gt.axis[5] + 1) / 2 * 3 - 1.4 => env1.gain;
+            (gt.axis[5] + 1) / 2 * 3 - 1.1 => env1.gain;
             (gt.axis[5] + 1) / 4 => bottleVolume;
         }
 

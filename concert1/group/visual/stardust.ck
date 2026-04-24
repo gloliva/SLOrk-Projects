@@ -1,47 +1,45 @@
-////// STARDUST //////
-
 @import "../lib/keyboard.ck"
 @import "../lib/global.ck"
 @import "../lib/util.ck"
 
-Keyboard kb(11);
-spork ~ kb.update();
-
 Global.gt @=> GameTrak @ gt;
 
-// decide color tint for background stardust
+GG.scene().camera() @=> GCamera cam;
+GG.scene().light() @=> GLight light;
+0. => light.intensity;
+
+0.9 => float BLOOM_INTENSITY;
+GG.outputPass() @=> OutputPass output_pass;
+GG.renderPass() --> BloomPass bloom_pass --> output_pass;
+bloom_pass.intensity(BLOOM_INTENSITY);
+bloom_pass.input(GG.renderPass().colorOutput());
+output_pass.input(bloom_pass.colorOutput());
+
 @(220, 230, 240)/255.0 => vec3 MANY_STARDUST_COLOR;
-// set global brightness boost for stardust
 5 => float STARDUST_INTENSITY;
-// set spectrum radius
 2.0 => float SPECTRUM_RADIUS;
-// set number of small stardust particles
 2000 => int STARDUST_NUM;
-// establish small sphere geometry for many dots
-SphereGeometry sphere_geo_many(0.017, 64, 16, 0., 2 * Math.pi, 0., Math.pi);
-// per-stardust materials and parameters
-FlatMaterial mat_many[STARDUST_NUM];
+SphereGeometry sphere_geo_many(0.017, 6, 3, 0., 2 * Math.pi, 0., Math.pi);
 
-// initial time offset per dust
-float init_time[STARDUST_NUM];
-// fade in/out frequency per dust
-float fade_freq[STARDUST_NUM];
-// brightness per dust
-float intensities[STARDUST_NUM];
+ShaderDesc star_shader_desc;
+me.dir() + "stardust.wgsl" => star_shader_desc.vertexPath;
+me.dir() + "stardust.wgsl" => star_shader_desc.fragmentPath;
+[VertexFormat.Float3, VertexFormat.Float3, VertexFormat.Float2] @=> star_shader_desc.vertexLayout;
+Shader star_shader(star_shader_desc);
+Material star_mat;
+star_mat.shader(star_shader);
 
-// place ranges for randomization on fading frequency, the starting time, and intensity of brightness
+vec4 star_params[STARDUST_NUM];
 for (int i; i < STARDUST_NUM; i++) {
-    Math.random2f(0.1, 2) => fade_freq[i];
-    Math.random2f(0.0, 2.0) => init_time[i];
-    Math.random2f(0.1, 0.5) => intensities[i];
+    @(Math.random2f(0.1, 2.),
+      Math.random2f(0., 2.),
+      Math.random2f(0.1, 0.5),
+      0.) => star_params[i];
 }
+star_mat.storageBuffer(0, star_params);
+star_mat.uniformFloat3(1, MANY_STARDUST_COLOR * STARDUST_INTENSITY);
+star_mat.uniformFloat(2, 1.0);
 
-// set initial tint with slight brightness variation
-for (auto x : mat_many) {
-    x.color(MANY_STARDUST_COLOR * STARDUST_INTENSITY * Math.random2f(0., 0.3));
-}
-
-// instantiate min and max values per position for placing the stardusts randomly
 GMesh stardusts[STARDUST_NUM];
 -40 => float minX => float minY;
 -100 => float minZ;
@@ -50,99 +48,86 @@ GMesh stardusts[STARDUST_NUM];
 (maxX - minX) * 0.5 => float maxXDistance;
 (maxZ - minZ) * 0.5 => float maxZDistance;
 
-// minimum radius from the origin to keep particles outside the waterfall ring
 SPECTRUM_RADIUS * 2 => float STARDUST_MIN_R;
 
-// place the stardusts in the scene
 for (int i; i < STARDUST_NUM; i++) {
-    GMesh sphere(sphere_geo_many, mat_many[i]);
+    GMesh sphere(sphere_geo_many, star_mat);
     sphere @=> stardusts[i];
     stardusts[i] --> GG.scene();
 
     float x, y, z;
     0 => int placed;
-
     while (placed == 0) {
-        //assign a value within the min-max range to the pos of stardust
         Math.random2f(minX, maxX) => x;
         Math.random2f(minY, maxY) => y;
         Math.random2f(minZ, maxZ) => z;
-        // compare to the minimum radius that keep the particulars toward the outer ring
-        if (Math.sqrt(x*x + y*y) >= STARDUST_MIN_R) 
-            //placement completed
-            1 => placed;
+        if (Math.sqrt(x*x + y*y) >= STARDUST_MIN_R) 1 => placed;
     }
-
     @(x, y, z) => stardusts[i].translate;
 }
 
-// animate stardust's fading and drifting
-fun void fade_in_out() {
-    now => time init_t;
+1. => float stardust_vis;
 
-    while (true) {
-        GG.nextFrame() => now;
-        (now - init_t) / 1::second => float t;
+// ===== Black hole shader ====================================================
+ShaderDesc shader_desc;
+me.dir() + "blackhole.wgsl" => shader_desc.vertexPath;
+me.dir() + "blackhole.wgsl" => shader_desc.fragmentPath;
+[VertexFormat.Float3, VertexFormat.Float3, VertexFormat.Float2] @=> shader_desc.vertexLayout;
+Shader universe_shader(shader_desc);
+Material universe_mat;
+universe_mat.shader(universe_shader);
+PlaneGeometry plane_geo;
+GMesh universe(plane_geo, universe_mat);
 
-        for (int i; i < STARDUST_NUM; i++) {
-            // define color and brightness every frame with some randomness
-            MANY_STARDUST_COLOR * STARDUST_INTENSITY * intensities[i] * Math.fabs(Math.sin(fade_freq[i] * t + init_time[i])) => mat_many[i].color;
-        }
-    }
-} spork ~ fade_in_out();
+universe --> cam;
+universe.posZ(-4.);
+universe.sca(50.);
 
-int wKeyDown, aKeyDown, sKeyDown, dKeyDown;
-fun void kbState() {
-    while (true) {
-        // wait for kb event
-        kb.event => now;
+Texture.load(me.dir() + "./blackhole-assets/stars-5.jpg") @=> Texture universe_txt;
+Texture.load(me.dir() + "./blackhole-assets/noise.jpg") @=> Texture noise_txt;
 
-        if (kb.event.state == KeyboardEvent.DOWN && kb.event.key == "W".charAt(0)) {
-            true => wKeyDown;
-        } else if (kb.event.state == KeyboardEvent.UP && kb.event.key == "W".charAt(0)) {
-            false => wKeyDown;
-        }
+160. => float BH_Z_FAR;
+10.  => float BH_Z_NEAR;
+22.  => float BH_Z_CROSSFADE_START;
+11.  => float BH_Z_CROSSFADE_END;
 
-        if (kb.event.state == KeyboardEvent.DOWN && kb.event.key == "A".charAt(0)) {
-            true => aKeyDown;
-        } else if (kb.event.state == KeyboardEvent.UP && kb.event.key == "A".charAt(0)) {
-            false => aKeyDown;
-        }
+@(0., 0., 160.) => vec3 bh_pos;
+@(0., 0.) => vec2 bh_rotation;
+@(0., 0.) => vec2 bh_view_turn;
+0. => float bh_radius;
+2. => float bh_hfov;
+3. => float bh_disk_brightness;
+@(1., 0.8, 0.6) => vec3 bh_disk_color;
+1. => float bh_bg_alpha;
+1. => float bh_warp_boost;
 
-        if (kb.event.state == KeyboardEvent.DOWN && kb.event.key == "S".charAt(0)) {
-            true => sKeyDown;
-        } else if (kb.event.state == KeyboardEvent.UP && kb.event.key == "S".charAt(0)) {
-            false => sKeyDown;
-        }
+TextureSampler universe_sampler;
+TextureSampler.Filter_Linear => universe_sampler.filterMin;
+TextureSampler.Filter_Linear => universe_sampler.filterMag;
+TextureSampler.Filter_Linear => universe_sampler.filterMip;
+TextureSampler.Wrap_Repeat   => universe_sampler.wrapU;
+TextureSampler.Wrap_Repeat   => universe_sampler.wrapV;
 
-        if (kb.event.state == KeyboardEvent.DOWN && kb.event.key == "D".charAt(0)) {
-            true => dKeyDown;
-        } else if (kb.event.state == KeyboardEvent.UP && kb.event.key == "D".charAt(0)) {
-            false => dKeyDown;
-        }
-    }
-} spork ~ kbState();
+universe_mat.texture(0, universe_txt);
+universe_mat.uniformFloat3(1, bh_pos);
+universe_mat.uniformFloat2(2, bh_rotation);
+universe_mat.uniformFloat2(3, bh_view_turn);
+universe_mat.texture(4, noise_txt);
+universe_mat.uniformFloat(5, bh_radius);
+universe_mat.uniformFloat(6, bh_hfov);
+universe_mat.uniformFloat(7, bh_disk_brightness);
+universe_mat.uniformFloat3(8, bh_disk_color);
+universe_mat.uniformFloat(9, bh_bg_alpha);
+universe_mat.sampler(12, universe_sampler);
+universe_mat.uniformFloat(13, bh_warp_boost);
 
-fun void kbHandler() {
-    1 => float speed;
-    while (true) {
-        GG.nextFrame() => now;
+// ===== Mode =================================================================
+0 => int MODE_STARDUST;
+1 => int MODE_APPROACH;
+2 => int MODE_BLACKHOLE;
+MODE_STARDUST => int mode;
 
-        if (wKeyDown) {
-            GG.camera().posZ(GG.camera().posZ() - speed);
-        }
-        if (aKeyDown) {
-            GG.camera().posX(GG.camera().posX() - speed / 2);
-        }
-        if (sKeyDown) {
-            GG.camera().posZ(GG.camera().posZ() + speed);
-        }
-        if (dKeyDown) {
-            GG.camera().posX(GG.camera().posX() + speed / 2);
-        }
-    }
-} spork ~ kbHandler();
-
+// ===== Stardust navigation ================
 fun float easeInOutCubic(float x) {
     return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
@@ -151,26 +136,23 @@ Shred @ stopShred;
 float deltaX, deltaZ;
 
 fun void stop() {
-    while (Math.fabs(deltaX) > 0.001 || Math.fabs(deltaZ) > 0.001) {
+    while ((Math.fabs(deltaX) > 0.001 || Math.fabs(deltaZ) > 0.001) && mode == MODE_STARDUST) {
         GG.nextFrame() => now;
-
         Util.lerp(deltaX, 0, 0.05) => deltaX;
         Util.lerp(deltaZ, 0, 0.05) => deltaZ;
-
-        GG.camera().posZ(GG.camera().posZ() + deltaZ);
-        GG.camera().posX(GG.camera().posX() + deltaX);
+        cam.posZ(cam.posZ() + deltaZ);
+        cam.posX(cam.posX() + deltaX);
     }
-    0.0 => deltaX => deltaZ;
+    if (mode == MODE_STARDUST) 0.0 => deltaX => deltaZ;
     null @=> stopShred;
 }
 
-
-fun void gtHandler() {
+fun void stardustGtHandler() {
     2 => float maxSpeed;
-    0.05 => float zThreshold;
-
+    0.03 => float zThreshold;
     while (true) {
         GG.nextFrame() => now;
+        if (mode != MODE_STARDUST) continue;
 
         if (gt.axis[5] < zThreshold) {
             if ((deltaX != 0 || deltaZ != 0) && stopShred == null) spork ~ stop() @=> stopShred;
@@ -179,44 +161,202 @@ fun void gtHandler() {
 
         Math.sgn(gt.axis[3]) * easeInOutCubic(Math.fabs(gt.axis[3])) => float easedX;
         Math.sgn(gt.axis[4]) * easeInOutCubic(Math.fabs(gt.axis[4])) => float easedY;
-
         Math.map2(easedX, -1, 1, -maxSpeed, maxSpeed) / 2 => deltaX;
         Math.map2(easedY, -1, 1, maxSpeed / 4, -maxSpeed) => deltaZ;
-
-        GG.camera().posZ(GG.camera().posZ() + deltaZ);
-        GG.camera().posX(GG.camera().posX() + deltaX);
+        cam.posZ(cam.posZ() + deltaZ);
+        cam.posX(cam.posX() + deltaX);
     }
-} spork ~ gtHandler();
+} spork ~ stardustGtHandler();
 
-fun int allKeysUp() { return !wKeyDown && !aKeyDown && !sKeyDown && !dKeyDown; }
-fun int allKeysDown() { return wKeyDown && aKeyDown && sKeyDown && dKeyDown; }
-
-// for infinite space
 fun void translateStars() {
     while (true) {
         GG.nextFrame() => now;
-
-        // if (allKeysUp() || allKeysDown()) continue;
-
+        if (mode == MODE_BLACKHOLE) continue;
         for (auto stardust : stardusts) {
-            if (Math.fabs(stardust.posZ() - GG.camera().posZ()) > maxZDistance) {
-                if (gt.axis[4] > 0) stardust.translateZ(-maxZDistance * 2);
-                else stardust.translateZ(maxZDistance * 2);
+            stardust.posZ() - cam.posZ() => float dz;
+            if (dz > maxZDistance)       stardust.translateZ(-maxZDistance * 2);
+            else if (dz < -maxZDistance) stardust.translateZ( maxZDistance * 2);
 
-                if (wKeyDown) stardust.translateZ(-maxZDistance * 2);
-                else if (sKeyDown) stardust.translateZ(maxZDistance * 2);
-            }
-            if (Math.fabs(stardust.posX() - GG.camera().posX()) > maxXDistance) {
-                if (gt.axis[3] < 0) stardust.translateX(-maxXDistance * 2);
-                else stardust.translateX(maxXDistance * 2);
-
-                if (aKeyDown) stardust.translateX(-maxXDistance * 2);
-                else if (dKeyDown) stardust.translateX(maxXDistance * 2);
-            }
+            stardust.posX() - cam.posX() => float dx;
+            if (dx > maxXDistance)       stardust.translateX(-maxXDistance * 2);
+            else if (dx < -maxXDistance) stardust.translateX( maxXDistance * 2);
         }
     }
 } spork ~ translateStars();
 
-while (true) {
-    GG.nextFrame() => now;
+vec3 bh_vel;
+
+fun void approachDriver() {
+    BH_Z_FAR => bh_pos.z;
+    universe_mat.uniformFloat3(1, bh_pos);
+
+    0. => bh_radius;
+    universe_mat.uniformFloat(5, bh_radius);
+
+    1.   => float maxSpeed;
+    8.   => float BH_RADIUS_FADEIN;
+    2.   => float TAPER_EXP;
+    0.08 => float FLOOR_SCALE;
+
+    while (mode == MODE_APPROACH) {
+        GG.nextFrame() => now;
+        GG.dt() => float dt;
+
+        Math.min(1., bh_radius + dt / BH_RADIUS_FADEIN) => bh_radius;
+        universe_mat.uniformFloat(5, bh_radius);
+
+        (bh_pos.z - BH_Z_NEAR) / (BH_Z_FAR - BH_Z_NEAR) => float progress;
+        Math.max(0., Math.min(1., progress)) => progress;
+        Math.pow(progress, TAPER_EXP) => float rate_scale;
+        Math.max(FLOOR_SCALE, rate_scale) => rate_scale;
+
+        0. => float dz;
+        0. => float dx;
+        if (gt.axis[5] > 0.05) {
+            Math.sgn(gt.axis[3]) * easeInOutCubic(Math.fabs(gt.axis[3])) => float easedX;
+            Math.sgn(gt.axis[4]) * easeInOutCubic(Math.fabs(gt.axis[4])) => float easedY;
+            Math.map2(easedX, -1, 1, -maxSpeed, maxSpeed) / 2 * rate_scale => dx;
+            Math.map2(easedY, -1, 1, maxSpeed / 4, -maxSpeed) * rate_scale => dz;
+        }
+        cam.posZ(cam.posZ() + dz);
+        cam.posX(cam.posX() + dx);
+
+        if (dz < 0) {
+            bh_pos.z + dz => bh_pos.z;
+            if (bh_pos.z < BH_Z_NEAR) BH_Z_NEAR => bh_pos.z;
+        }
+        universe_mat.uniformFloat3(1, bh_pos);
+
+        (BH_Z_CROSSFADE_START - bh_pos.z) / (BH_Z_CROSSFADE_START - BH_Z_CROSSFADE_END) => float t;
+        Math.max(0., Math.min(1., t)) => t;
+        1. - t => stardust_vis;
+        1. - t => bh_bg_alpha;
+        star_mat.uniformFloat(2, stardust_vis);
+        universe_mat.uniformFloat(9, bh_bg_alpha);
+
+        if (bh_pos.z <= BH_Z_NEAR + 0.001) {
+            for (auto s : stardusts) s --< GG.scene();
+            MODE_BLACKHOLE => mode;
+            break;
+        }
+    }
 }
+
+fun void buttonWatch() {
+    while (true) {
+        gt.buttonPress => now;
+        if (mode == MODE_STARDUST) {
+            MODE_APPROACH => mode;
+            spork ~ approachDriver();
+        }
+    }
+} spork ~ buttonWatch();
+
+0.01  => float BH_VEL_ACC;
+0.93  => float BH_VEL_DAMP;
+0.10  => float BH_POS_SCALE;
+0.7   => float BH_YAW_RATE;
+0.2   => float BH_WRAP_THRESHOLD;
+5.    => float BH_WRAP_EMERGE_R;
+15.  => float BH_MAX_R;
+0.1  => float BH_PULL;
+5.0  => float BH_TARGET_R;
+
+fun void bhGtHandler() {
+    0.05 => float dead;
+    while (true) {
+        GG.nextFrame() => now;
+        if (mode != MODE_BLACKHOLE) continue;
+        GG.dt() => float dt;
+
+        if (gt.axis[5] >= dead && Math.fabs(gt.axis[3]) > dead) {
+            -gt.axis[3] * BH_YAW_RATE * dt +=> bh_view_turn.x;
+            universe_mat.uniformFloat2(3, bh_view_turn);
+        }
+
+        -Math.sin(bh_view_turn.x) => float fx;
+        -Math.cos(bh_view_turn.x) => float fz;
+
+        if (gt.axis[5] < dead) {
+            @(0., 0., 0.) => bh_vel;
+        } else if (Math.fabs(gt.axis[4]) > dead) {
+            Std.scalef(gt.axis[5], dead, 1., 0., 1.) => float throttle;
+            gt.axis[4] * throttle * BH_VEL_ACC => float accel;
+            fx * accel +=> bh_vel.x;
+            fz * accel +=> bh_vel.z;
+        }
+        
+        Math.map2(gt.axis[5], 0, 0.35, 50, 5) => universe.sca;
+
+        bh_pos.magnitude() => float pull_mag;
+        if (pull_mag > 0.0001) {
+            (pull_mag - BH_TARGET_R) * BH_PULL / Math.max(3., pull_mag) => float pull_scalar;
+            -bh_pos.x / pull_mag * pull_scalar +=> bh_vel.x;
+            -bh_pos.z / pull_mag * pull_scalar +=> bh_vel.z;
+        }
+
+        BH_VEL_DAMP *=> bh_vel;
+        bh_vel * BH_POS_SCALE +=> bh_pos;
+
+        bh_pos.magnitude() => float mag;
+        if (mag < bh_radius * BH_WRAP_THRESHOLD && mag > 0.0001) {
+            -BH_WRAP_EMERGE_R / mag => float k;
+            k *=> bh_pos;
+            Math.fmod(bh_view_turn.x + Math.PI, 2. * Math.PI) => bh_view_turn.x;
+            universe_mat.uniformFloat2(3, bh_view_turn);
+            -1 *=> bh_vel;
+        }
+
+        bh_pos.magnitude() => mag;
+        if (mag > BH_MAX_R) {
+            BH_MAX_R / mag *=> bh_pos;
+            0.3 *=> bh_vel;
+        }
+
+        universe_mat.uniformFloat3(1, bh_pos);
+    }
+} spork ~ bhGtHandler();
+
+fun void bhAutoAnimate() {
+    now => time t0;
+    while (true) {
+        GG.nextFrame() => now;
+        if (mode != MODE_BLACKHOLE) continue;
+        GG.dt() => float dt;
+        (now - t0) / 1::second => float t;
+
+        bh_pos.magnitude() => float dist;
+        1. / Math.max(0.6, dist) => float closeness;
+        bh_vel.magnitude() => float speed;
+
+        bh_rotation.x + dt * (0.04 + 0.14 * closeness + 0.03 * speed) => bh_rotation.x;
+        bh_rotation.y + dt * (0.025 + 0.07 * closeness) => bh_rotation.y;
+        Math.fmod(bh_rotation.x, 1.) => bh_rotation.x;
+        Math.fmod(bh_rotation.y, 1.) => bh_rotation.y;
+        universe_mat.uniformFloat2(2, bh_rotation);
+
+        2. + 0.14 * Math.sin(t * 0.17) + 0.08 * Math.sin(t * 0.41 + 1.3) => bh_hfov;
+        universe_mat.uniformFloat(6, bh_hfov);
+
+        0.05 * closeness * Math.sin(t * 0.12) + 0.02 * Math.sin(t * 0.37) => bh_view_turn.y;
+        universe_mat.uniformFloat2(3, bh_view_turn);
+
+        1. + (0.05 + 0.09 * closeness) * Math.sin(t * 0.45)
+           + 0.03 * Math.sin(t * 0.93 + 0.9) => bh_radius;
+        universe_mat.uniformFloat(5, bh_radius);
+
+    }
+} spork ~ bhAutoAnimate();
+
+fun void color_change() {
+    while (true) {
+        GG.nextFrame() => now;
+        if (mode != MODE_BLACKHOLE) continue;
+        Math.sin(bh_rotation.x * Math.PI) * 180 + 180 => float hue;
+        Math.sin(bh_rotation.y * Math.PI) * 0.3 + 0.2 => float sat;
+        Color.hsv2rgb(@(hue, sat, 1.)) => bh_disk_color;
+        universe_mat.uniformFloat3(8, bh_disk_color);
+    }
+} spork ~ color_change();
+
+while (true) GG.nextFrame() => now;

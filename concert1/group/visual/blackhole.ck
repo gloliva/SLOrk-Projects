@@ -64,6 +64,9 @@ universe_mat.uniformFloat(5, radius);
 universe_mat.uniformFloat(6, hfov);
 universe_mat.uniformFloat(7, disk_brightness);
 universe_mat.uniformFloat3(8, disk_color);
+universe_mat.uniformFloat(9, 0.);  // 0 = show shader's own star background
+universe_mat.uniformFloat3(10, @(1000., 1000., 1000.));  // satellite BHs parked far away
+universe_mat.uniformFloat3(11, @(-1000., -1000., -1000.));
 
 vec3 vel;
 @(0.02, 0.) => vec2 rot_vel;

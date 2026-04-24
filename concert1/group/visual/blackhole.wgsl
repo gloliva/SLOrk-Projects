@@ -48,6 +48,9 @@ const PI: f32 = 3.1415926538;
 @group(1) @binding(6) var<uniform> u_hfov : f32;
 @group(1) @binding(7) var<uniform> u_disk_brightness : f32;  // disk brightness
 @group(1) @binding(8) var<uniform> u_disk_color : vec3f;  // disk color
+@group(1) @binding(9) var<uniform> u_bg_alpha : f32;  // 0 = show star bg, 1 = discard bg (stardust shows through)
+@group(1) @binding(12) var u_sampler : sampler;         // linear+repeat, for smooth bg texture sampling
+@group(1) @binding(13) var<uniform> u_warp_boost : f32; // 1.0 baseline; spikes high during "dimensional tearing" pulses
 
 // standard vertex shader that applies mvp transform to input position,
 // and passes interpolated world_position, normal, and uv data to fragment shader
@@ -99,17 +102,43 @@ fn rotate(vel: vec3f, turn: vec2f) -> vec3f {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    // Transform fragCoord to normalized UV coordinates (-1 to 1).
-    // let iResolution = vec2f(u_frame.projection_view_inverse_no_translation[0].xy); // Assume resolution in the first column of matrix.
-    // let uv = (2.0 * fragCoord.xy - iResolution) / iResolution.x; // Normalize coordinates relative to resolution.
+    // Early-out: nothing to draw when the BH is "off" (radius 0 + bg hidden).
+    // Lets the stardust-mode script keep the plane attached with no flash.
+    if (u_radius < 0.005 && u_bg_alpha > 0.99) {
+        discard;
+    }
     let uv = 2. * in.v_uv - 1;
 
     // this is the vel of the ray shooting from the camera to the fragment
     var vel = normalize(vec3f(uv * tan(u_hfov / 2.0), -1.0));
     vel = rotate(vel, u_view_turn);
-    // vel = rotate(vel, vec2f(0., PI));
-    // vel = rotate(vel, vec2f(0., u_frame.time));
-    // vel = rotate(vel, vec2f(u_frame.time, 0.));
+
+    // Layered reality warp. Gated off when u_bg_alpha=1 (approach mode) so the
+    // stardust phase stays calm. Each layer contributes a *different kind* of
+    // distortion — combined they feel less like jitter and more like physics
+    // being bent: spacetime billowing, views turning in on themselves, cosmos
+    // slowly drifting. Low frequencies throughout for a flowing sensation.
+    // PERF: combine all three warp layers into a single rotate() call.
+    // Each layer is a small-angle perturbation (|angle| < 0.1 rad), so
+    // composition-order error is O(0.01 rad) — invisible. Also skip the
+    // whole block when warp contribution is essentially zero (early approach
+    // frames where u_bg_alpha is still near 1).
+    let warp = 1. - u_bg_alpha;
+    let tw = u_frame.time;
+    if (warp > 0.01) {
+        let tb = u_warp_boost;  // 1.0 baseline; dimensional-tearing pulses multiply everything
+        let flow = vec2f(
+            sin(tw * 0.22 + uv.x * 1.3 + uv.y * 0.6) * 0.07 * tb,
+            cos(tw * 0.19 + uv.y * 1.1 - uv.x * 0.8) * 0.07 * tb
+        );
+        let phi_uv = atan2(uv.y, uv.x);
+        let rho_uv = length(uv);
+        let spiral = sin(tw * 0.15 + rho_uv * 1.2) * 0.05 * tb;
+        let drift = vec2f(sin(tw * 0.08) * 0.04 * tb, cos(tw * 0.11) * 0.03 * tb);
+        let total = (flow + vec2f(-spiral * sin(phi_uv), spiral * cos(phi_uv)) + drift) * warp;
+        vel = rotate(vel, total);
+    }
+
     vel = vec3f(vel.z, vel.xy);
 
     // Initialize the position of the particle or camera.
@@ -120,44 +149,122 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     var r = length(pos);                      // Distance from the origin.
     let dtau = 0.008;                           // Step size for iteration.
 
-    // accretion disk
-    let disk_inner_radius = u_radius + 0.1;  // Inner radius of the disk.
-    let disk_outer_radius = u_radius * 2.5 ;  // Outer radius of the disk.
+    // accretion disk — wider than physically minimal so lensed rays that
+    // cross z=0 at r slightly past the traditional 2.5*Rs boundary still
+    // register, giving the visible ring more reach (this is what produces
+    // the curving top/bottom lobes from a distance).
+    let disk_inner_radius = u_radius + 0.1;
+    let disk_outer_radius = max(u_radius * 6.0, 4.0);  // wider annulus — rings reach further out
     var disk_rgb = vec3f(0.);
     var get_disk = false;
 
-    // Iterative physics-based motion.
-    while (r < dist * 2. || r < 20.) && r > u_radius {
-        let ddtau = dtau * r;                 // Step size scales with the current radius.
-        pos += vel * ddtau;                   // Update position.
-        r = length(pos);                      // Update radius.
+    var inside_bh: bool = false;
 
-         // Disk Intersection
-        if r > disk_inner_radius && r < disk_outer_radius {
-            let disk_height = abs(pos.z); // Z determines vertical position.
-            if disk_height < 0.01 && !get_disk {     // Thin accretion disk.
-            // Add color from the disk.
-                let phi = 5. * atan2(vel.z, vel.x) / (PI); // Disk azimuthal angle.
-                // let theta = atan2(length(vel.xy), vel.z) / PI;
-                let theta = 0.;
-                let local_uv = fract(vec2f(phi, theta) - u_rotation * 2.);      // Simple radial texture for the disk.
-                let dim: vec2u = textureDimensions(u_noise_texture);
-                let coords = vec2i(local_uv * vec2f(dim));
-                disk_rgb = textureLoad(u_noise_texture, coords, 0).rgb;
-                // disk_rgb = pow(disk_rgb, vec3f(2));
-                disk_rgb = smoothstep(vec3f(-2.), vec3f(0.9), disk_rgb);
-                disk_rgb *= u_disk_color * u_disk_brightness;
-                disk_rgb *= smoothstep(disk_inner_radius, disk_outer_radius, r) * smoothstep(disk_outer_radius, disk_inner_radius, r);
-                get_disk = true;
+    let max_reach = max(dist * 2., 20.);
+    let noise_dim_f = vec2f(textureDimensions(u_noise_texture));
 
-                // var disk_rgb = u_disk_color * u_disk_brightness;
-                // return vec4f(disk_rgb, 1.); // Exit early if disk is hit.
+    // IMPACT-PARAMETER FAST PATH.
+    // Rays whose straight-line closest approach to the BH is large get no
+    // meaningful lensing, so skip the raymarch: direct texture lookup, no
+    // chromatic aberration. Threshold scales with u_bg_alpha so during
+    // approach (camera far, BH small on screen) more rays take the slow
+    // path and the rings render correctly. In BH mode the threshold is
+    // tight (4) for perf.
+    let b_main = length(cross(pos, vel));
+    // Threshold must be at least the disk outer radius so every ray that
+    // could hit the disk annulus goes through the slow path. Also widens
+    // during approach (u_bg_alpha high) so distant ring rays still render.
+    let b_threshold = max(disk_outer_radius + 1., mix(6., 14., u_bg_alpha));
+    if (b_main >= b_threshold) {
+        var disk_direct = vec3f(0.);
+        if (abs(vel.z) > 0.001) {
+            let t_cross = -pos.z / vel.z;
+            if (t_cross > 0.) {
+                let pos_cross = pos + t_cross * vel;
+                let r_cross = length(pos_cross);
+                if (r_cross > disk_inner_radius && r_cross < disk_outer_radius) {
+                    let phi = 5. * atan2(vel.z, vel.x) / PI;
+                    let local_uv = fract(vec2f(phi, 0.) - u_rotation * 2.);
+                    let coords = vec2i(local_uv * noise_dim_f);
+                    disk_direct = textureLoad(u_noise_texture, coords, 0).rgb;
+                    disk_direct = smoothstep(vec3f(-2.), vec3f(0.9), disk_direct);
+                    disk_direct *= u_disk_color * u_disk_brightness;
+                    disk_direct *= smoothstep(disk_inner_radius, disk_outer_radius, r_cross)
+                                 * smoothstep(disk_outer_radius, disk_inner_radius, r_cross);
+                }
             }
         }
 
-        let er = pos / r;                     // Unit vector in the radial direction.
-        let c = cross(vel, er);               // Perpendicular vector for angular momentum.
-        vel -= ddtau * dot(c, c) * er / (r * r); // Update velocity based on angular momentum.
+        let phi1_d  = 0.5 + atan2(vel.y, vel.x) / PI;
+        let theta1_d = atan2(length(vel.xy), vel.z) / PI;
+        let UV_d = fract(vec2f(phi1_d, theta1_d) - u_rotation);
+        var rgb_d = textureSampleLevel(u_texture, u_sampler, UV_d, 0.).rgb;
+        rgb_d = pow(rgb_d, vec3f(2.4));
+
+        let has_disk = (disk_direct.r + disk_direct.g + disk_direct.b) > 0.001;
+        if (!has_disk && u_bg_alpha > 0.999) { discard; }
+        return vec4f(disk_direct + rgb_d * (1. - u_bg_alpha), 1.0);
+    }
+
+    // Track how far the ray travels off the disk plane so edge-on rays
+    // (which would paint a horizontal stripe across the BH) are excluded
+    // from disk shading — only lensed-over-the-BH rays register.
+    var max_abs_z: f32 = abs(pos.z);
+    var min_r: f32 = r;
+
+    // Capture threshold as squared radius — the early-exit capture check
+    // avoids a sqrt.
+    let u_radius_sq = u_radius * u_radius;
+
+    // Persistent reciprocal from inverseSqrt — reused for gravity.
+    var inv_r: f32 = 1.0 / max(r, 0.0001);
+
+    var step_count: i32 = 0;
+    loop {
+        if (!(r < max_reach) || step_count >= 500) { break; }
+        step_count = step_count + 1;
+
+        let ddtau = dtau * max(0.2, r);
+        pos += vel * ddtau;
+
+        // One rsqrt gives r AND 1/r together.
+        let r_sq = dot(pos, pos);
+        inv_r = inverseSqrt(r_sq);
+        r = r_sq * inv_r;
+
+        min_r = min(min_r, r);
+        max_abs_z = max(max_abs_z, abs(pos.z));
+
+        // Capture.
+        if (r_sq <= u_radius_sq) { inside_bh = true; break; }
+
+        // Disk (lensed-weight gate keeps the edge-on stripe invisible).
+        if (r > disk_inner_radius && r < disk_outer_radius) {
+            let prev_z = pos.z - vel.z * ddtau;
+            let crossed = prev_z * pos.z < 0.;
+            let disk_height = abs(pos.z);
+            if (disk_height < 0.03 || crossed) {
+                let lensed_weight = smoothstep(0.15, 0.6, max_abs_z);
+                let phi = 5. * atan2(vel.z, vel.x) / PI;
+                let local_uv = fract(vec2f(phi, 0.) - u_rotation * 2.);
+                let coords = vec2i(local_uv * noise_dim_f);
+                var new_disk = textureLoad(u_noise_texture, coords, 0).rgb;
+                new_disk = smoothstep(vec3f(-2.), vec3f(0.9), new_disk);
+                new_disk *= u_disk_color * u_disk_brightness * lensed_weight;
+                new_disk *= smoothstep(disk_inner_radius, disk_outer_radius, r)
+                          * smoothstep(disk_outer_radius, disk_inner_radius, r);
+                disk_rgb = max(disk_rgb, new_disk);
+                get_disk = true;
+            }
+        }
+
+        // Gravity (cross+dot identity, inverseSqrt-derived reciprocals).
+        if (r > 0.01 && r < 25.) {
+            let er = pos * inv_r;
+            let vdote = dot(vel, er);
+            let dot_c_c = dot(vel, vel) - vdote * vdote;
+            vel -= (ddtau * dot_c_c * inv_r * inv_r) * er;
+        }
     }
 
     // Calculate spherical coordinates for texture mapping.
@@ -165,23 +272,59 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     let theta1 = atan2(length(vel.xy), vel.z) / PI; // Polar angle., normalized to (0,1)
 
     // UV coordinates for the texture.
-    let UV = fract(vec2f(phi1, theta1) - u_rotation); // rotate with time
-    // let UV = fract(vec2f(phi1, theta1) + u_rotation * 0.); // rotate with time
+    let UV = fract(vec2f(phi1, theta1) - u_rotation);
+    let bh_commit = 1. - u_bg_alpha;
 
-    // load texture
-    let dim: vec2u = textureDimensions(u_texture);
-    let coords = vec2i(UV * vec2f(dim));
-    var rgb = textureLoad(u_texture, coords, 0).rgb;
-    // rgb += 0.3 * (rgb.xxx + rgb.yyy + rgb.zzz);
-    // rgb /= 1.3;
+    // Chromatic aberration (phi split), BH-mode only, scales with warp_boost.
+    let eff_r_ca = max(0.15, u_radius);
+    let aberration = smoothstep(eff_r_ca * 4., eff_r_ca * 1.5, min_r) * bh_commit * 0.006 * u_warp_boost;
+    var rgb: vec3f;
+    if (aberration > 0.0005) {
+        let UV_r = fract(vec2f(phi1 + aberration, theta1) - u_rotation);
+        let UV_b = fract(vec2f(phi1 - aberration, theta1) - u_rotation);
+        rgb = vec3f(
+            textureSampleLevel(u_texture, u_sampler, UV_r, 0.).r,
+            textureSampleLevel(u_texture, u_sampler, UV,   0.).g,
+            textureSampleLevel(u_texture, u_sampler, UV_b, 0.).b
+        );
+    } else {
+        rgb = textureSampleLevel(u_texture, u_sampler, UV, 0.).rgb;
+    }
     rgb = pow(rgb, vec3f(2.4));
 
-    // default background: checkerboard pattern
-    // rgb = vec3f(checkerAA(UV * 180.0 / PI / 30.0));
-    rgb = rgb * f32(r > u_radius);      // Apply visibility based on radius condition.
-    // let rgb_final = mix(rgb, disk_rgb, f32(r > disk_inner_radius && r < disk_outer_radius));
-    let rgb_final = disk_rgb + rgb;
+    // Dimensional echo: only sample when the warp is actually contributing.
+    let warp_now = 1. - u_bg_alpha;
+    if (warp_now > 0.01) {
+        let echo_UV = fract(vec2f(theta1 + 0.37, phi1 + 0.21) - u_rotation * 1.5);
+        var rgb_echo = textureSampleLevel(u_texture, u_sampler, echo_UV, 0.).rgb;
+        rgb_echo = pow(rgb_echo, vec3f(2.4));
+        rgb = rgb + rgb_echo * (warp_now * 0.28);
+    }
 
-    // Return the final color.
-    return vec4f(rgb_final, 1.0);            // Output the color with alpha = 1.0.
+    // Rays that passed close to any BH get their lensed-background contribution
+    // bled in even when u_bg_alpha is high — this is the visible "halo" around
+    // a BH during approach, so the captain sees the full lensing outline long
+    // before commit to BH mode. Rays that went nowhere near a BH still discard.
+    // Gate halo on actual radius: prevents the smoothstep from degenerating
+    // (and from leaking light through) when the BH is still fading in.
+    let halo_gate = smoothstep(0.02, 0.15, u_radius);
+    let eff_r = max(0.05, u_radius);
+    let halo = smoothstep(eff_r * 5., eff_r * 1.5, min_r) * halo_gate;
+    let bg_alpha_eff = u_bg_alpha * (1. - halo);
+
+    if (!inside_bh && !get_disk && bg_alpha_eff > 0.999) {
+        discard;
+    }
+    // Gate disk contribution on capture: a ray that eventually gets swallowed
+    // by the event horizon still accumulated disk_rgb while passing through
+    // the annulus on its way in. Adding that back to the final color would
+    // paint the disk through the BH silhouette (a solid line cutting across
+    // the black disc). Captured rays should read pure black; the disk only
+    // colors rays that actually escape to infinity and passed through the
+    // annulus along the way — which gives the correct "disk curves around
+    // the top and bottom, BH interior is black" appearance.
+    let visible = f32(!inside_bh);
+    let bg = rgb * visible * (1. - bg_alpha_eff);
+    let rgb_final = disk_rgb * visible + bg;
+    return vec4f(rgb_final, 1.0);
 }

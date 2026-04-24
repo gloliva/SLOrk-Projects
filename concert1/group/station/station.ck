@@ -2,6 +2,7 @@
 @import "../lib/global.ck"
 @import "../lib/keyboard.ck"
 @import "../lib/state.ck"
+@import "../lib/util.ck"
 
 Machine.add(me.dir() + "/../soundscape/main.ck");
 
@@ -16,6 +17,9 @@ Std.atoi(me.arg(0)) => int sound;
 @(0.0, 0.0) => vec2 sound3Gain;
 sound == 4 ? @(0.01, 0.01) : @(0.0, 0.0) => vec2 sound4Gain;
 sound == 5 ? @(0.01, 0.01) : @(0.0, 0.0) => vec2 sound5Gain;
+
+int navigator;
+if (sound == 5) true => navigator;
 
 // --------------------- GAINS --------------------- //
 [
@@ -210,18 +214,81 @@ fun void applySound(int sel) {
 fun void gtHandler() {
     while (true) {
         Std.scalef(gt.axis[0], -1., 1., 250., 5000.)::ms => pingPeriod;
-        Std.scalef(gt.axis[3], -1., 1., 30, 1000) $int => beepRate;
-        Std.scalef(gt.axis[4], -1., 1., 200., 2000.) => sound4Bpf.freq;
+        Std.scalef(gt.axis[1], -1., 1., 30, 1000) $ int => beepRate;
+        Std.scalef(gt.axis[0], -1., 1., 200., 2000.) => sound4Bpf.freq;
 
-        if (gt.axis[5] < gt.deadzone) {
+        if (gt.axis[2] < gt.deadzone) {
             0. => pingEnv.gain;
         } else {
-            Std.scalef(gt.axis[5], gt.deadzone, 0.4, 0., 1.) => pingEnv.gain;
+            Std.scalef(gt.axis[2], gt.deadzone, 0.4, 0., 1.) => pingEnv.gain;
         }
 
         10::ms => now;
     }
 } spork ~ gtHandler();
+
+PoleZero blocker2;
+.95 => blocker2.blockZero;
+
+SndBuf engineBuf(me.dir() + "../assets/engineThrust.wav") => LPF engineLPF => HPF engineHPF => Gain engineGain => blocker2 => masterGain;
+engineBuf.loop(true);
+0 => engineGain.gain;
+2000. => engineLPF.freq;
+0.5 => engineLPF.Q;
+50 => engineHPF.freq;
+0.5 => engineHPF.Q;
+
+0.03 => float engineDeadzone;
+0.03 => float engineZThreshold;
+
+CNoise engineNoise("white") => LPF engineFilter => NRev engineRev => Gain engineNoiseGain => masterGain;
+0 => engineNoiseGain.gain;
+0.08 => engineRev.mix;
+100. => engineFilter.freq;
+
+fun void engineUpdate() {
+    0.0 => float curGain;
+    1.0 => float curRate;
+    0.0 => float zEnv;
+
+    while (true) {
+        gt.axis[4] => float y;
+        Math.fabs(y) => float magnitude;
+        if (magnitude < engineDeadzone) 0 => magnitude;
+        Math.sqrt(magnitude) => float curved;
+
+        0.0 => float tgtGain;
+        curRate => float tgtRate;
+        2000. => float tgtLPF;
+        if (y > 0 && magnitude > 0) {
+            curved => tgtGain;
+            0.9 + 0.5 * magnitude => tgtRate;
+            Std.scalef(magnitude, 0, 1, 1200, 4000) => tgtLPF;
+        } else if (y < 0 && magnitude > 0) {
+            curved * 0.9 => tgtGain;
+            -(0.5 + 0.35 * magnitude) => tgtRate;
+            Std.scalef(magnitude, 0, 1, 500, 1600) => tgtLPF;
+        }
+
+        0.0 => float zTarget;
+        if (gt.axis[5] > engineZThreshold) 1.0 => zTarget;
+
+        Util.lerp(curGain, tgtGain, 0.2) => curGain;
+        Util.lerp(curRate, tgtRate, 0.2) => curRate;
+        Util.lerp(zEnv, zTarget, 0.025) => zEnv;
+
+        zEnv * curGain * 0.1 => engineGain.gain;
+        curRate => engineBuf.rate;
+        tgtLPF => engineLPF.freq;
+
+        Std.scalef(magnitude, 0, 1, 80, 500) => engineFilter.freq;
+        zEnv * curved * 0.15 * 0.1 => engineNoiseGain.gain;
+
+        10::ms => now;
+    }
+}
+
+if (navigator) spork ~ engineUpdate();
 
 
 while (true) {
