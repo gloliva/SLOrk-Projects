@@ -12,5 +12,4 @@ public class Events {
 public class Global {
     static GameTrak gt(0);
     static StationState state;
-    static OscReceiver receiver(Events.damageStation, Events.enterBlackhole);
 }

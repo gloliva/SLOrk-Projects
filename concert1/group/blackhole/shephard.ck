@@ -2,14 +2,6 @@
 @import "../lib/util.ck"
 
 
-// CMD line args for blackhole - is this station the OSC sender or receiver
-Std.atoi(me.arg(0)) => int senderStation;
-
-
-// Globals
-Global.gt @=> GameTrak @ gt;
-
-
 public class ShepardGenerator {
     // Parameters to make this work that I don't understand
     float MU;
@@ -76,6 +68,11 @@ public class ShepardGenerator {
             this.tones[i] => this.gains[i] => this.chs[i] => this.revs[i] => this.envs[i] => dac.chan(i % dac.channels());
             this.organs[i] => this.gains[i];
         }
+
+        // Run
+        spork ~ this.run();
+        spork ~ this.stopSound();
+        spork ~ this.gtHandler();
     }
 
     fun void chorus(float freq, float depth, float mix) {
@@ -164,9 +161,3 @@ public class ShepardGenerator {
         me.exit();
     }
 }
-
-
-ShepardGenerator sg(senderStation, gt);
-spork ~ sg.run();
-spork ~ sg.stopSound();
-sg.gtHandler();

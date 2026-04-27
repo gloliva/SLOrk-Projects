@@ -1,9 +1,6 @@
-@import "../lib/gametrak.ck"
-@import "../lib/global.ck"
-@import "../lib/keyboard.ck"
-@import "../lib/osc.ck"
-@import "../lib/state.ck"
-@import "../lib/util.ck"
+@import {"../blackhole/shephard.ck", "../blackhole/bells.ck"}
+@import {"../lib/gametrak.ck", "../lib/keyboard.ck", "../lib/osc.ck"}
+@import {"../lib/global.ck", "../lib/state.ck", "../lib/util.ck"}
 
 
 // cmd line args to assign station ID
@@ -18,6 +15,7 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 // State
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ state;
+OscReceiver receiver(Events.damageStation, Events.enterBlackhole);
 
 
 public class Station {
@@ -289,7 +287,7 @@ spork ~ station.oscListen(Events.damageStation);
 fun void fadeBack(Envelope master[]) {
     10::second => now;
     // reverse station specific SndBufs
-    station.reverseAll();       
+    station.reverseAll();
     // pull in current playback location
     buf1.samples() => buf1.pos;
     buf2.samples() => buf2.pos;
@@ -301,21 +299,34 @@ fun void fadeBack(Envelope master[]) {
 }
 
 
+fun void warpHandler() {
+    while (true) {
+        gt.buttonPress => now;
+
+        // Each station handles their own STATION --> WARP transition
+        if (stationState.currState == stationState.STATION && !stationState.hold) {
+            stationState.transition();
+            break;
+        }
+    }
+}
+
+
 while (true) {
     // Wait for state transition
     state.stateChange => now;
 
     // soundscape
-    if (state.currState == state.SOUNDSCAPE) {
+    if (state.currState == state.SOUNDSCAPE && !state.hold) {
         <<< "Inside Repair Station, turning Station OFF" >>>;
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
     //station
-    } else if (state.currState == state.STATION) {
+    } else if (state.currState == state.STATION && !state.hold) {
         <<< "Inside Repair Station, doing nothing for now..." >>>;
     // quitting repair sound
-    } else if (state.currState == state.WARP) {
+    } else if (state.currState == state.WARP && !state.hold) {
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
@@ -323,11 +334,11 @@ while (true) {
         // Lock shred to prevent any more state transitions
         state.lock();
 
-        // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
-        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
+        // Shepard + Bells handling
+        ShepardGenerator sg(senderStation, gt);
+        BlackholeBells bells(gt);
 
         // since bells start playing, also fade back all station sounds & reverse them
-        fadeBack(master);
+        // fadeBack(master);
     }
 }

@@ -1,11 +1,6 @@
-// raddio sound + warping sound
-@import "../lib/gametrak.ck"
-@import "../lib/global.ck"
-@import "../lib/keyboard.ck"
-@import "../lib/osc.ck"
-@import "../lib/state.ck"
-@import "../lib/snd.ck"
-@import "../lib/util.ck"
+@import {"../blackhole/shephard.ck", "../blackhole/bells.ck"}
+@import {"../lib/gametrak.ck", "../lib/keyboard.ck", "../lib/osc.ck"}
+@import {"../lib/global.ck", "../lib/state.ck", "../lib/snd.ck", "../lib/util.ck"}
 @import "../soundscape/paulstretch.ck"
 
 
@@ -13,11 +8,15 @@
 Std.atoi(me.arg(0)) => int senderStation;
 
 
-// Globals and state management
+// Globals variables
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
-OscSender sender;
 
+// OSC handling
+OscSender sender;
+OscReceiver receiver(Events.damageStation, Events.enterBlackhole);
+
+// State management
 StationState.STATION => stationState.currState;
 CaptainState.NONE => int state;
 Envelope masterGain => dac;
@@ -114,7 +113,7 @@ fun void engineUpdate() {
 
         10::ms => now;
     }
-} 
+}
 
 //spork ~ engineUpdate();
 
@@ -216,7 +215,7 @@ fun void fadeBack() {
     phonePS.start();
     phonePS.out().gain(0.1);
     phonePS.out() => masterGain;
-    
+
     radioPS.start();
     radioPS.out().gain(0.1);
     radioPS.out() => masterGain;
@@ -227,7 +226,7 @@ fun void fadeBack() {
 
 
     // fade back in over 5 seconds
-   // masterGain.ramp(5::second, 1.);
+    // masterGain.ramp(5::second, 1.);
 }
 
 
@@ -237,25 +236,26 @@ while (true) {
     gt.buttonPress => now;
     stationState.transition();
 
-    if (stationState.currState == stationState.WARP && !stationState.hold) {
-        <<< "Inside Captain, turning Captain OFF" >>>;
+    if (stationState.currState == station.STATION && !stationState.hold) {
+        // Send state change OSC
+        sender.send("/state/station");
+
+        // Turn on station sounds
+        masterGain.ramp(5::second, 1.0);
+    } else if (stationState.currState == stationState.WARP && !stationState.hold) {
+        // Send state change OSC
+        sender.send("/state/warp");
+
+        // Turn off station sounds
         masterGain.ramp(5::second, 0.0);
 
-        // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
-        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
-
-        
-
-        // dk if it's bringing it back?
-       
+        // Shepard + Bells handling
+        ShepardGenerator sg(senderStation, gt);
+        BlackholeBells bells(gt);
     } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
         sender.send("/enterBlackhole", 1);
-        // Lock shred to prevent any more state 
-        
-
-        fadeBack();
-        
+        // Lock shred to prevent any more state
         stationState.lock();
+        fadeBack();
     }
 }
