@@ -4,10 +4,6 @@
 @import "../soundscape/paulstretch.ck"
 
 
-// CMD line args for blackhole - is this station the OSC sender or receiver
-Std.atoi(me.arg(0)) => int senderStation;
-
-
 // Soundscape code
 Machine.add(me.dir() + "/../soundscape/main.ck");
 
@@ -233,7 +229,7 @@ fun void fadeBack() {
 
 
 // Warp + Blackhole objects
-ShepardGenerator sg(senderStation, gt);
+ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
 
 

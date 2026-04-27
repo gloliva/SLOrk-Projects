@@ -12,8 +12,8 @@ Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
 OscReceiver receiver(Events.damageStation, Events.stateChange, stationState.stateChange);
 
-Std.atoi(me.arg(0)) => int senderStation;
-Std.atoi(me.arg(1)) => int sound;
+Std.atoi(me.arg(0)) => int sound;
+Std.atoi(me.arg(1)) => int testRun;
 
 @(0.0, 0.0) => vec2 sound1Gain;
 @(0.0, 0.0) => vec2 sound2Gain;
@@ -308,13 +308,17 @@ fun void warpHandler() {
 
 
 // Warp + Blackhole objects
-ShepardGenerator sg(senderStation, gt);
+ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
 
 
 while (true) {
     // Wait for state transition
-    Events.stateChange => now;
+    if (!testRun) {
+        Events.stateChange => now;
+    } else {
+        gt.buttonPress => now;
+    }
     stationState.transition();
 
     if (stationState.currState == stationState.STATION && !stationState.hold) {

@@ -28,11 +28,7 @@ public class ShepardGenerator {
     // GameTrak
     GameTrak @ gt;
 
-    // state params
-    int senderStation;
-
-    fun @construct(int senderStation, GameTrak gt) {
-        senderStation => this.senderStation;
+    fun @construct(GameTrak gt) {
         gt @=> this.gt;
 
         // mean for normal intensity curve

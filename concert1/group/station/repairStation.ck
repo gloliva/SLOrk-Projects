@@ -4,8 +4,8 @@
 
 
 // cmd line args to assign station ID
-Std.atoi(me.arg(0)) => int senderStation;
-Std.atoi(me.arg(1)) => int stationId;
+Std.atoi(me.arg(0)) => int stationId;
+Std.atoi(me.arg(1)) => int testRun;
 
 
 // Soundscape code
@@ -117,11 +117,8 @@ public class Station {
 
     fun void oscListen(DamageStationEvent damageStation) {
         while (true) {
-            <<< "Waiting for OSC station damage" >>>;
             damageStation => now;
-            <<< "Received OSC station damage, checking if this station" >>>;
             if (damageStation.stationId == this.stationId) {
-                <<< "Damaging this station" >>>;
                 if (!this.damaged) {
                     this.machineRate.ramp(5::second, 0.);
                     this.damage();
@@ -313,13 +310,17 @@ fun void warpHandler() {
 
 
 // Warp + Blackhole objects
-ShepardGenerator sg(senderStation, gt);
+ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
 
 
 while (true) {
     // Wait for state transition
-    Events.stateChange => now;
+    if (!testRun) {
+        Events.stateChange => now;
+    } else {
+        gt.buttonPress => now;
+    }
     stationState.transition();
 
     if (stationState.currState == stationState.STATION && !stationState.hold) {
