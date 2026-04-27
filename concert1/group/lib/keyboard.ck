@@ -28,6 +28,9 @@ public class Keyboard {
             me.exit();
         }
         <<< "keyboard '" + this.hi.name() + "' ready", "" >>>;
+
+        spork ~ this.update();
+        me.yield();
     }
 
     fun void update() {

@@ -2,13 +2,17 @@
 @import "../lib/util.ck"
 
 
+// CMD line args for blackhole - is this station the OSC sender or receiver
+Std.atoi(me.arg(0)) => int senderStation;
+
+
+<<< "In bells, sender station", senderStation >>>;
+
+
 // Globals
 Global.gt @=> GameTrak @ gt;
-
-
-public class BlackholeBells {
-
-}
+Global.receiver @=> OscReceiver @ receiver;
+Global.sender @=> OscSender @ sender;
 
 
 dac.channels() => int NUM_CHANNELS;
@@ -66,7 +70,22 @@ for (int i; i < 8; i++) {
 
 fun void gtHandler() {
 
-    gt.buttonPress => now;
+    if (senderStation) {
+        gt.buttonPress => now;
+        sender.send("/enterBlackhole", 1);
+        <<< "Sent OSC state change, entering blackhole" >>>;
+    } else {
+        1 => int waiting;
+        while (waiting) {
+            receiver.in => now;
+            while (receiver.in.recv(receiver.msg)) {
+                if (receiver.msg.address == "/enterBlackhole") {
+                    0 => waiting;
+                }
+            }
+        }
+        <<< "Received OSC state change, entering blackhole" >>>;
+    }
     2::second => now;
 
     <<< "Inside Bells, turning sound ON" >>>;

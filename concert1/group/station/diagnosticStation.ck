@@ -8,6 +8,10 @@ This is the script for the Diagnostic personnel to run
 @import "../lib/util.ck"
 
 
+// CMD line args for blackhole - is this station the OSC sender or receiver
+Std.atoi(me.arg(0)) => int senderStation;
+
+
 // Soundscape code
 Machine.add(me.dir() + "/../soundscape/main.ck");
 
@@ -218,6 +222,6 @@ while (true) {
 
         // Add shephard generator shred + bell shred
         Machine.add(me.dir() + "/../blackhole/shephard.ck");
-        Machine.add(me.dir() + "/../blackhole/bells.ck");
+        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }

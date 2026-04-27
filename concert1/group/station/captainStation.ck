@@ -1,14 +1,22 @@
 // raddio sound + warping sound
-
 @import "../lib/gametrak.ck"
+@import "../lib/global.ck"
+@import "../lib/keyboard.ck"
+@import "../lib/osc.ck"
 @import "../lib/state.ck"
 @import "../lib/snd.ck"
 @import "../lib/util.ck"
-@import "../lib/global.ck"
+
+
+// CMD line args for blackhole - is this station the OSC sender or receiver
+Std.atoi(me.arg(0)) => int senderStation;
+
 
 // Globals and state management
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
+Global.sender @=> OscSender @ sender;
+
 StationState.STATION => stationState.currState;
 CaptainState.NONE => int state;
 Envelope masterGain => dac;
@@ -90,6 +98,21 @@ int walkieTalkie;
 Shred @ startWTShred;
 Shred @ loopWTShred;
 
+fun void kbHandler() {
+    Keyboard kb(2);
+
+    while (true) {
+        kb.event => now;
+
+        if (kb.event.state == KeyboardEvent.DOWN) {
+            kb.event.key - "0".charAt(0) => int stationId;
+            if (stationId > 0 && stationId < 6 ) {
+                sender.send("/damage", stationId);
+            }
+        }
+    }
+} spork ~ kbHandler();
+
 fun void gtHandler() {
     while (true) {
         // x axis
@@ -140,6 +163,6 @@ while (true) {
 
         // Add shephard generator shred + bell shred
         Machine.add(me.dir() + "/../blackhole/shephard.ck");
-        Machine.add(me.dir() + "/../blackhole/bells.ck");
+        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }

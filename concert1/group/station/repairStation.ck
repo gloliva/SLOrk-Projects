@@ -1,25 +1,36 @@
-@import "../lib/keyboard.ck"
 @import "../lib/gametrak.ck"
 @import "../lib/global.ck"
+@import "../lib/keyboard.ck"
+@import "../lib/osc.ck"
 @import "../lib/state.ck"
+@import "../lib/util.ck"
+
+
+// cmd line args to assign station ID
+Std.atoi(me.arg(0)) => int senderStation;
+Std.atoi(me.arg(1)) => int stationId;
+
 
 // Soundscape code
 Machine.add(me.dir() + "/../soundscape/main.ck");
 
 
 // State
+Global.gt @=> GameTrak @ gt;
+Global.receiver @=> OscReceiver @ receiver;
 Global.state @=> StationState @ state;
 
 
 public class Station {
-    // Station audio
-    SawOsc oscs[3];
-
     // Keyboard handling
     int keyIdx;
     Keyboard @ kb;
-    TriOsc keySounds[16];
-    ADSR envs[16];
+    TriOsc keySounds[12];
+    ADSR envs[12];
+
+    // OSC handling
+    OscReceiver @ receiver;
+    int stationId;
 
     // scale
     [0, 3, 7, 10, 13] @=> int scale[];
@@ -42,8 +53,10 @@ public class Station {
     SndBuf repairSounds[6];
     SndBuf fixedSound;
 
-    fun @construct(Envelope master[], Envelope machineRate) {
+    fun @construct(Envelope master[], Envelope machineRate, OscReceiver receiver, int stationId) {
         machineRate @=> this.machineRate;
+        receiver @=> this.receiver;
+        stationId => this.stationId;
 
         // Setup keyboard clicking sound
         for (int i; i < this.keySounds.size(); i++) {
@@ -71,7 +84,6 @@ public class Station {
         me.dir() + "../assets/SteampunkDevice_S011SF.758.wav" => repairSounds[3].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.759.wav" => repairSounds[4].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.752.wav" => repairSounds[5].read;
-        // me.dir() + "../assets/SuperheroGadgetOff_HV.814.wav" => repairSounds[5].read;
 
         me.dir() + "../assets/SciFiWeapon_S08SF.1677.wav" => fixedSound.read;
 
@@ -103,13 +115,25 @@ public class Station {
         0 => fixedSound.play;
 
         // Setup keyboard
-        new Keyboard(1) @=> this.kb;
-        spork ~ this.kb.update();
+        Util.getKeyboardDeviceId() => int keyboardId;
+        new Keyboard(keyboardId) @=> this.kb;
+    }
+
+    fun void oscListen() {
+        while (true) {
+            this.receiver.in => now;
+            while (this.receiver.in.recv(this.receiver.msg)) {
+                if (this.receiver.msg.address == "/damage" && this.receiver.msg.getInt(0) == this.stationId) {
+                    if (!this.damaged) {
+                        this.machineRate.ramp(5::second, 0.);
+                        this.damage();
+                    }
+                }
+            }
+        }
     }
 
     fun void damage() {
-        390 => this.oscs[1].freq;
-        406. => this.oscs[2].freq;
         1 => this.damaged;
 
         // Play crash sound
@@ -170,12 +194,6 @@ public class Station {
                     spork ~ this.playKeyboardSound();
                     spork ~ this.playKeyboardSound2();
                 }
-            } else {
-                if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.key == "D".charAt(0)) {
-                    spork ~ this.damage();
-                    me.yield();
-                    machineRate.ramp(5::second, 0.) => now;
-                }
             }
         }
     }
@@ -195,10 +213,11 @@ public class Station {
 }
 
 
-Global.gt @=> GameTrak @ gt;
 Envelope master[6];
+PoleZero blocker[6];
 for (int i; i < master.size(); i++) {
-    master[i] => dac.chan(i % dac.channels());
+    0.95 => blocker[i].blockZero;
+    master[i] => blocker[i] => dac.chan(i % dac.channels());
 }
 
 
@@ -243,8 +262,9 @@ fun void updateMachinery() {
 
 
 // Initialize repair station and enable keyboard interaction
-Station station(master, machineRate);
+Station station(master, machineRate, receiver, stationId);
 spork ~ station.interact(master);
+spork ~ station.oscListen();
 
 
 while (true) {
@@ -268,6 +288,6 @@ while (true) {
 
         // Add shephard generator shred + bell shred
         Machine.add(me.dir() + "/../blackhole/shephard.ck");
-        Machine.add(me.dir() + "/../blackhole/bells.ck");
+        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }

@@ -34,16 +34,5 @@ public class OscReceiver {
     fun @construct(int port) {
         port => this.in.port;
         this.in.listenAll();
-        spork ~ this.listen();
-        me.yield();
-    }
-
-    fun void listen() {
-        while (true) {
-            this.in => now;
-            while (this.in.recv(this.msg)) {
-                <<< "Addr", msg.address, "Arg", msg.getInt(0) >>>;
-            }
-        }
     }
 }

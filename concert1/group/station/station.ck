@@ -10,8 +10,9 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ state;
 
+Std.atoi(me.arg(0)) => int senderStation;
+Std.atoi(me.arg(1)) => int sound;
 
-Std.atoi(me.arg(0)) => int sound;
 @(0.0, 0.0) => vec2 sound1Gain;
 @(0.0, 0.0) => vec2 sound2Gain;
 @(0.0, 0.0) => vec2 sound3Gain;
@@ -310,6 +311,6 @@ while (true) {
 
         // Add shephard generator shred + bell shred
         Machine.add(me.dir() + "/../blackhole/shephard.ck");
-        Machine.add(me.dir() + "/../blackhole/bells.ck");
+        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }
