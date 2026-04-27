@@ -302,7 +302,7 @@ while (true) {
     } else if (state.currState == state.STATION) {
         <<< "Inside Navigator, turning Navigator ON" >>>;
         masterGain.ramp(5::second, 1.0);
-    } else if (state.currState == state.BLACKHOLE) {
+    } else if (state.currState == state.WARP) {
         <<< "Inside Navigator, turning Navigator ON" >>>;
         masterGain.ramp(5::second, 0.0);
 
@@ -310,7 +310,7 @@ while (true) {
         state.lock();
 
         // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck");
+        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
         Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }

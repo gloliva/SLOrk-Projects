@@ -6,7 +6,7 @@
 //
 // author: Celeste Betancur Gutierrez
 //         adapted from Paul Nasca's Python implementation
-// class wrapper: mchen912
+// class wrapper: Michelle Chen
 // date: Fall 2025
 //--------------------------------------------------------
 
@@ -32,6 +32,7 @@ public class PaulStretch
     complex freqBuffer[1];
 
     0 => int running;
+    0 => int built;
 
     // set a new stretch resolution (smaller values = more stretch)
     fun void setResolution(float r)
@@ -49,15 +50,15 @@ public class PaulStretch
     fun void useInput(SndBuf @buf)
     {
         buf @=> input;
+        // 1 => input.loop;
+        // 0 => input.pos;
     }
 
     // record any UGen into a temp wav, load it, and start stretching
-    fun void recordAndStart(UGen @src, dur length)
+    fun void recordAndStart(UGen @src, dur length, string recordPath)
     {
         // stop any existing processing
         stop();
-
-        me.dir() + "paulstretch_record.wav" => string recordPath;
 
         // tap the source into a recorder
         WvOut recorder => blackhole;
@@ -109,12 +110,14 @@ public class PaulStretch
         windowSize / 2 => halfWindowSize;
         freqBuffer.size(halfWindowSize);
 
-        // analysis chain
-        input => fft => blackhole;
-
-        // synthesis chain
-        ifft1 => output;
-        ifft2 => output;
+        // analysis chain — only patch once; repeated => adds duplicate connections
+        if (!built)
+        {
+            input => fft => blackhole;
+            ifft1 => output;
+            ifft2 => output;
+            1 => built;
+        }
 
         // set sizes + Hann window
         windowSize => fft.size => ifft1.size => ifft2.size;
@@ -124,7 +127,7 @@ public class PaulStretch
         // compute playback hop size
         (overlapAdd * (input.sampleRate()) / (second / samp)$float)$int => playbackHop;
 
-        0 => input.pos;
+        //0 => input.pos;
         1.0 => output.gain;
         1 => running;
 
@@ -174,8 +177,14 @@ public class PaulStretch
 
 //--------------------------------------------------------
 
+
+// the following example is working
 PaulStretch ps;
-ps.readSample("./paulstretch_record.wav");
+ps.readSample(me.dir() + "../assets/radio.wav");
+ps.setResolution(0.5);
 ps.start();
+
 ps.out() => dac;
+
+10 :: second => now;
 //--------------------------------------------------------

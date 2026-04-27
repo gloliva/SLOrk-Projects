@@ -36,18 +36,27 @@ spaceshipMaster.value(0.);
 
 // waveforms setup
 4 => int maxVoices;
-SawOsc oscs[0];
+SinOsc oscs[0];
+// adding in chorus for this one
+Chorus chors[0];
 float baseFreqs[0];
 1 => float voiceGain;
 
 // form chords
 for (0 => int i; i < maxVoices; i++)
 {
-    SawOsc osc => mix;
+    SinOsc osc => Chorus chor => mix;
     voiceGain => osc.gain;
     //enable osc sync with lfo
     2 => osc.sync; 
+
+    chor.baseDelay( 10::ms );
+    chor.modDepth( 1 );
+    chor.modFreq( 1 );
+    chor.mix( 1 );
+
     oscs << osc;
+    chors << chor;
     baseFreqs << 0.0;
 }
 
@@ -73,7 +82,7 @@ delay => delay;
 // define lfo
 SinOsc lfo => blackhole;
 0.8 => lfo.gain;
-//0.1=> lfo.freq;
+
 
 // global lfo frequency
 float lfoFreq;
@@ -86,8 +95,8 @@ float lfoFreq;
 fun void applyLfo()
 {
 
-    500.0 => float filterCenter;
-    100.0 => float filterDepth;
+    300.0 => float filterCenter;
+    1000.0 => float filterDepth;
     1.0 => float pitchDepth;
 
     while (true)
@@ -124,7 +133,7 @@ bpm.bar => dur chordTime;
 
 fun void playChord(float position)
 {
-    [-12, 0, 12] @=> int offset[];
+    [12, 24, 48] @=> int offset[];
 
     // frequencies for this chord
     for (0 => int i; i < t.chord.cap() && i < oscs.cap(); i++)
@@ -148,7 +157,8 @@ fun void playChord(float position)
         0 => baseFreqs[i];
     }
     
-    (bpm.quarterNote, bpm.quarterNote, 0.1, bpm.quarterNote) => env1.set;
+    //(bpm.quarterNote, bpm.quarterNote, 0.1, bpm.quarterNote) => env1.set;
+    (bpm.bar, 5::ms, 0.1, 5::ms) => env1.set;
     
     // triger envelope
     env1.keyOn();
@@ -186,16 +196,16 @@ fun void gtHandler() {
         // Transition to next state
         state.transition();
 
-        if (state.currState == state.SOUNDSCAPE && !state.hold) {
+        if (state.currState == state.SOUNDSCAPE) {
             <<< "Inside Soundscape, turning soundscape ON" >>>;
             master.ramp(5::second, 1.);
             spaceshipMaster.ramp(5::second, 0.);
-        } else if (state.currState == state.STATION && !state.hold) {
+        } else if (state.currState == state.STATION) {
             <<< "Inside Soundscape, turning soundscape DOWN" >>>;
             master.ramp(5::second, 0.);
             spaceshipMaster.ramp(5::second, 1.);
-        } else if (state.currState == state.WARP && !state.hold) {
-            <<< "Inside Soundscape, transitioning to Warp, turning soundscape and spaceship DOWN" >>>;
+        } else if (state.currState == state.BLACKHOLE) {
+            <<< "Inside Soundscape, transitioning to Blackhole, turning soundscape and spaceship DOWN" >>>;
             master.ramp(5::second, 0.);
             spaceshipMaster.ramp(5::second, 0.);
         }
@@ -217,7 +227,7 @@ fun void print()
     }
 }
 
-// spork ~ print();
+spork ~ print();
 
 fun void axesHandler() {
     while (true) {
@@ -230,9 +240,9 @@ fun void axesHandler() {
 
         // left handle's x => major/minor
         if (gt.axis[0] < -0.5) {
-            chords.minor @=> t.chord;
+            chords.min79 @=> t.chord;
         } else if (gt.axis[0] > 0.5) {
-            chords.major @=> t.chord;
+            chords.sus4 @=> t.chord;
         }
 
         // right handle's x => tempo

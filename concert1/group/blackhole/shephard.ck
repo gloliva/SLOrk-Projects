@@ -2,6 +2,10 @@
 @import "../lib/util.ck"
 
 
+// CMD line args for blackhole - is this station the OSC sender or receiver
+Std.atoi(me.arg(0)) => int senderStation;
+
+
 // Globals
 Global.gt @=> GameTrak @ gt;
 
@@ -32,7 +36,11 @@ public class ShepardGenerator {
     // GameTrak
     GameTrak @ gt;
 
-    fun @construct(GameTrak gt) {
+    // state params
+    int senderStation;
+
+    fun @construct(int senderStation, GameTrak gt) {
+        senderStation => this.senderStation;
         gt @=> this.gt;
 
         // mean for normal intensity curve
@@ -79,7 +87,6 @@ public class ShepardGenerator {
     }
 
     fun void gain(float g) {
-        // <<< "gain", g >>>;
         for (int i; i < this.numPitches; i++) {
             g => this.gains[i].gain;
         }
@@ -143,16 +150,23 @@ public class ShepardGenerator {
     }
 
     fun void stopSound() {
-        gt.buttonPress => now;
+        if (this.senderStation) {
+            gt.buttonPress => now;
+        } else {
+            Events.enterBlackhole => now;
+        }
 
         for (Envelope env : this.envs) {
             env.ramp(50::ms, 0.);
         }
+
+        100::ms => now;
+        me.exit();
     }
 }
 
 
-ShepardGenerator sg(gt);
+ShepardGenerator sg(senderStation, gt);
 spork ~ sg.run();
 spork ~ sg.stopSound();
 sg.gtHandler();

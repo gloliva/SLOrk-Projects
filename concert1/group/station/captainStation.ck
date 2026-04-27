@@ -6,6 +6,7 @@
 @import "../lib/state.ck"
 @import "../lib/snd.ck"
 @import "../lib/util.ck"
+@import "../soundscape/paulstretch.ck"
 
 
 // CMD line args for blackhole - is this station the OSC sender or receiver
@@ -15,22 +16,30 @@ Std.atoi(me.arg(0)) => int senderStation;
 // Globals and state management
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
-Global.sender @=> OscSender @ sender;
+OscSender sender;
 
 StationState.STATION => stationState.currState;
 CaptainState.NONE => int state;
 Envelope masterGain => dac;
 1. => masterGain.value;
 
-SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => masterGain;
+SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => Delay phoneDelay => masterGain;
 phone.loop(true);
 phoneGain.gain(0);
 
-SndBuf radio(me.dir() + "../assets/radio.wav") => Gain radioGain => masterGain;
+2::second => phoneDelay.max;
+0.0::second => phoneDelay.delay;
+
+
+SndBuf radio(me.dir() + "../assets/radio.wav") => Gain radioGain => Delay radioDelay => masterGain;
 radio.loop(true);
 radioGain.gain(0);
 
-SndBuf engineBuf(me.dir() + "../assets/engineThrust.wav") => LPF engineLPF => HPF engineHPF => Gain engineGain => PoleZero blocker => masterGain;
+2::second => radioDelay.max;
+0.0::second => radioDelay.delay;
+
+
+SndBuf engineBuf(me.dir() + "../assets/engineThrust.wav") => LPF engineLPF => HPF engineHPF => Gain engineGain => Delay engineDelay => PoleZero blocker => masterGain;
 engineBuf.loop(true);
 0 => engineGain.gain;
 2000. => engineLPF.freq;
@@ -39,6 +48,10 @@ engineBuf.loop(true);
 0.5 => engineHPF.Q;
 .95 => blocker.blockZero;
 
+2::second => engineDelay.max;
+0.0::second => engineDelay.delay;
+
+
 0.03 => float engineDeadzone;
 0.03 => float engineZThreshold;
 
@@ -46,6 +59,20 @@ CNoise engineNoise("white") => LPF engineFilter => NRev engineRev => Gain engine
 0 => engineNoiseGain.gain;
 0.08 => engineRev.mix;
 100. => engineFilter.freq;
+
+// setting up PS for in blackhole sound stretch
+PaulStretch phonePS;
+phonePS.useInput(phone);
+phonePS.setResolution(0.5); // smaller => more extreme
+
+PaulStretch radioPS;
+radioPS.useInput(radio);
+radioPS.setResolution(0.5);
+
+PaulStretch enginePS;
+enginePS.useInput(engineBuf);
+enginePS.setResolution(0.5);
+
 
 fun void engineUpdate() {
     0.0 => float curGain;
@@ -87,7 +114,12 @@ fun void engineUpdate() {
 
         10::ms => now;
     }
-} spork ~ engineUpdate();
+} 
+
+//spork ~ engineUpdate();
+
+Shred @ engineShred;
+spork ~ engineUpdate() @=> engineShred;
 
 -0.5 => float leftThreshold;
 0.5 => float rightThreshold;
@@ -99,7 +131,9 @@ Shred @ startWTShred;
 Shred @ loopWTShred;
 
 fun void kbHandler() {
-    Keyboard kb(2);
+    // Setup keyboard
+    Util.getKeyboardDeviceId() => int keyboardId;
+    Keyboard kb(keyboardId);
 
     while (true) {
         kb.event => now;
@@ -107,6 +141,7 @@ fun void kbHandler() {
         if (kb.event.state == KeyboardEvent.DOWN) {
             kb.event.key - "0".charAt(0) => int stationId;
             if (stationId > 0 && stationId < 6 ) {
+                <<< "Sending OSC:", stationId >>>;
                 sender.send("/damage", stationId);
             }
         }
@@ -145,7 +180,55 @@ fun void stateHandler() {
 
         10::ms => now;
     }
-} spork ~ stateHandler();
+}
+
+spork ~ stateHandler();
+
+
+fun void fadeBack() {
+
+    masterGain.ramp(5::second, 1.);
+    
+    // //10::second => now;
+
+    // // Stop engineUpdate from fighting the reversed state
+    // if (engineShred != null) engineShred.exit();
+
+    // // reverse playbacks
+    // phone.samples() => phone.pos;
+    // -1. => phone.rate;
+
+    // radio.samples() => radio.pos;
+    // -1. => radio.rate;
+
+    // engineBuf.samples() => engineBuf.pos;
+    // -1. => engineBuf.rate;
+
+    // 1::second => phoneDelay.delay;
+    // 1::second => radioDelay.delay;
+    // 1::second => engineDelay.delay;
+
+    // PS route
+    phoneGain.gain(0);
+    radioGain.gain(0);
+    engineGain.gain(0);
+
+    phonePS.start();
+    phonePS.out().gain(0.1);
+    phonePS.out() => masterGain;
+    
+    radioPS.start();
+    radioPS.out().gain(0.1);
+    radioPS.out() => masterGain;
+
+    enginePS.start();
+    enginePS.out().gain(0.1);
+    enginePS.out() => masterGain;
+
+
+    // fade back in over 5 seconds
+   // masterGain.ramp(5::second, 1.);
+}
 
 
 // Handle program transitions
@@ -154,15 +237,25 @@ while (true) {
     gt.buttonPress => now;
     stationState.transition();
 
-    if (stationState.currState == stationState.BLACKHOLE) {
+    if (stationState.currState == stationState.WARP && !stationState.hold) {
         <<< "Inside Captain, turning Captain OFF" >>>;
         masterGain.ramp(5::second, 0.0);
 
-        // Lock shred to prevent any more state transitions
-        stationState.lock();
-
         // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck");
+        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
         Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
+
+        
+
+        // dk if it's bringing it back?
+       
+    } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
+        sender.send("/enterBlackhole", 1);
+        // Lock shred to prevent any more state 
+        
+
+        fadeBack();
+        
+        stationState.lock();
     }
 }

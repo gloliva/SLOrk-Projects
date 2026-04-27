@@ -17,7 +17,6 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 
 // State
 Global.gt @=> GameTrak @ gt;
-Global.receiver @=> OscReceiver @ receiver;
 Global.state @=> StationState @ state;
 
 
@@ -29,7 +28,6 @@ public class Station {
     ADSR envs[12];
 
     // OSC handling
-    OscReceiver @ receiver;
     int stationId;
 
     // scale
@@ -53,9 +51,8 @@ public class Station {
     SndBuf repairSounds[6];
     SndBuf fixedSound;
 
-    fun @construct(Envelope master[], Envelope machineRate, OscReceiver receiver, int stationId) {
+    fun @construct(Envelope master[], Envelope machineRate, int stationId) {
         machineRate @=> this.machineRate;
-        receiver @=> this.receiver;
         stationId => this.stationId;
 
         // Setup keyboard clicking sound
@@ -84,6 +81,7 @@ public class Station {
         me.dir() + "../assets/SteampunkDevice_S011SF.758.wav" => repairSounds[3].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.759.wav" => repairSounds[4].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.752.wav" => repairSounds[5].read;
+        // me.dir() + "../assets/SuperheroGadgetOff_HV.814.wav" => repairSounds[5].read;
 
         me.dir() + "../assets/SciFiWeapon_S08SF.1677.wav" => fixedSound.read;
 
@@ -119,15 +117,16 @@ public class Station {
         new Keyboard(keyboardId) @=> this.kb;
     }
 
-    fun void oscListen() {
+    fun void oscListen(DamageStationEvent damageStation) {
         while (true) {
-            this.receiver.in => now;
-            while (this.receiver.in.recv(this.receiver.msg)) {
-                if (this.receiver.msg.address == "/damage" && this.receiver.msg.getInt(0) == this.stationId) {
-                    if (!this.damaged) {
-                        this.machineRate.ramp(5::second, 0.);
-                        this.damage();
-                    }
+            <<< "Waiting for OSC station damage" >>>;
+            damageStation => now;
+            <<< "Received OSC station damage, checking if this station" >>>;
+            if (damageStation.stationId == this.stationId) {
+                <<< "Damaging this station" >>>;
+                if (!this.damaged) {
+                    this.machineRate.ramp(5::second, 0.);
+                    this.damage();
                 }
             }
         }
@@ -168,6 +167,8 @@ public class Station {
         3::second => now;
         crashEnv.keyOff(1);
     }
+
+
 
     fun void interact(Envelope master[]) {
         while (true) {
@@ -210,6 +211,24 @@ public class Station {
         0 => damageSounds[0].pos;
         2. => damageSounds[0].play;
     }
+
+
+    fun void reverseAll() {
+        alarm.samples() => alarm.pos;
+        -1. => alarm.rate;
+
+        for (SndBuf buf : damageSounds) {
+            buf.samples() => buf.pos;
+            -1. => buf.rate;
+        }
+        for (SndBuf buf : repairSounds) {
+            buf.samples() => buf.pos;
+            -1. => buf.rate;
+        }
+        fixedSound.samples() => fixedSound.pos;
+        -1. => fixedSound.rate;
+    }
+
 }
 
 
@@ -262,23 +281,41 @@ fun void updateMachinery() {
 
 
 // Initialize repair station and enable keyboard interaction
-Station station(master, machineRate, receiver, stationId);
+Station station(master, machineRate, stationId);
 spork ~ station.interact(master);
-spork ~ station.oscListen();
+spork ~ station.oscListen(Events.damageStation);
+
+
+fun void fadeBack(Envelope master[]) {
+    10::second => now;
+    // reverse station specific SndBufs
+    station.reverseAll();       
+    // pull in current playback location
+    buf1.samples() => buf1.pos;
+    buf2.samples() => buf2.pos;
+    -1. => buf1.rate;
+    -1. => buf2.rate;
+    for (Envelope env : master) {
+        env.ramp(5::second, 1.);
+    }
+}
 
 
 while (true) {
     // Wait for state transition
     state.stateChange => now;
 
+    // soundscape
     if (state.currState == state.SOUNDSCAPE) {
         <<< "Inside Repair Station, turning Station OFF" >>>;
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
+    //station
     } else if (state.currState == state.STATION) {
         <<< "Inside Repair Station, doing nothing for now..." >>>;
-    } else if (state.currState == state.BLACKHOLE) {
+    // quitting repair sound
+    } else if (state.currState == state.WARP) {
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
@@ -287,7 +324,10 @@ while (true) {
         state.lock();
 
         // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck");
+        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
         Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
+
+        // since bells start playing, also fade back all station sounds & reverse them
+        fadeBack(master);
     }
 }

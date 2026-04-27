@@ -27,12 +27,40 @@ public class OscReceiver {
     OscIn in;
     OscMsg msg;
 
-    fun @construct() {
+    // Events
+    DamageStationEvent @ damageStation;
+    Event @ enterBlackhole;
+
+    fun @construct(DamageStationEvent damageStation, Event enterBlackhole) {
+        damageStation @=> this.damageStation;
+        enterBlackhole @=> this.enterBlackhole;
         OscReceiver(this.DEFAULT_PORT);
     }
 
     fun @construct(int port) {
         port => this.in.port;
         this.in.listenAll();
+        spork ~ this.listen();
     }
+
+    fun void listen() {
+        while (true) {
+            this.in => now;
+            while (this.in.recv(this.msg)) {
+                <<< "Addr:", this.msg.address, "Value:", this.msg.getInt(0) >>>;
+                if (this.msg.address == "/damage") {
+                    this.msg.getInt(0) => this.damageStation.stationId;
+                    this.damageStation.broadcast();
+                } else if (this.msg.address == "/enterBlackhole") {
+                    this.enterBlackhole.broadcast();
+                }
+            }
+        }
+    }
+}
+
+
+// Custom OSC Events
+public class DamageStationEvent extends Event {
+    int stationId;
 }

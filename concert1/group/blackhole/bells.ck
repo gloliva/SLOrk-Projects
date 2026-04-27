@@ -6,13 +6,8 @@
 Std.atoi(me.arg(0)) => int senderStation;
 
 
-<<< "In bells, sender station", senderStation >>>;
-
-
 // Globals
 Global.gt @=> GameTrak @ gt;
-Global.receiver @=> OscReceiver @ receiver;
-Global.sender @=> OscSender @ sender;
 
 
 dac.channels() => int NUM_CHANNELS;
@@ -69,23 +64,7 @@ for (int i; i < 8; i++) {
 
 
 fun void gtHandler() {
-
-    if (senderStation) {
-        gt.buttonPress => now;
-        sender.send("/enterBlackhole", 1);
-        <<< "Sent OSC state change, entering blackhole" >>>;
-    } else {
-        1 => int waiting;
-        while (waiting) {
-            receiver.in => now;
-            while (receiver.in.recv(receiver.msg)) {
-                if (receiver.msg.address == "/enterBlackhole") {
-                    0 => waiting;
-                }
-            }
-        }
-        <<< "Received OSC state change, entering blackhole" >>>;
-    }
+    Events.enterBlackhole => now;
     2::second => now;
 
     <<< "Inside Bells, turning sound ON" >>>;
@@ -120,11 +99,9 @@ while (true) {
     <<< "Beginning sequencing" >>>;
     while (sequencing) {
         if (maybe) {
-            <<< "Pattern 1", "" >>>;
             playPattern(pat1);
         }
         else {
-            <<< "Pattern 2", "" >>>;
             playPattern(pat2);
         }
     }
@@ -140,7 +117,6 @@ fun void playPattern(int pat[])  {
     1 => int oct;
     if (maybe*maybe) {
         2 => oct; // occasional octave higher
-        <<< "Octave higher", "" >>>;
     }
     for (0 => int i; i < pat.cap(); i++)  {
         if (!sequencing) break;
@@ -148,7 +124,6 @@ fun void playPattern(int pat[])  {
         Std.mtof(pat[i])*oct => bell[round].freq;
         if (i == 1 && maybe*maybe) {
             1 => bassBell.noteOn;
-            <<< "Dong!", "" >>>;
         }
         1 => bell[round].noteOn;
         round++;

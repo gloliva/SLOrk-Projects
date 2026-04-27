@@ -213,7 +213,7 @@ while (true) {
         masterGain.ramp(5::second, 1.0);
         handleDiagnostics();
         state.release();
-    } else if (state.currState == state.BLACKHOLE) {
+    } else if (state.currState == state.WARP) {
         <<< "Inside Diagnostic Station, transitioning to BLACKHOLE and turning station OFF" >>>;
         masterGain.ramp(5::second, 0.0);
 
@@ -221,7 +221,7 @@ while (true) {
         state.lock();
 
         // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck");
+        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
         Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
     }
 }

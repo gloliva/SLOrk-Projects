@@ -10,9 +10,10 @@ public class StationState {
     // Static variables
     0 => static int SOUNDSCAPE;
     1 => static int STATION;
-    2 => static int BLACKHOLE;
+    2 => static int WARP;
+    3 => static int BLACKHOLE;
 
-    3 => static int NUM_STATES;
+    4 => static int NUM_STATES;
 
     // Instance variables
     0 => int currState;
