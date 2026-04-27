@@ -71,8 +71,8 @@ public class ShepardGenerator {
 
         // Run
         spork ~ this.run();
-        spork ~ this.stopSound();
-        spork ~ this.gtHandler();
+        // spork ~ this.stopSound();
+        // spork ~ this.gtHandler();
     }
 
     fun void chorus(float freq, float depth, float mix) {
@@ -147,17 +147,11 @@ public class ShepardGenerator {
     }
 
     fun void stopSound() {
-        if (this.senderStation) {
-            gt.buttonPress => now;
-        } else {
-            Events.enterBlackhole => now;
-        }
-
         for (Envelope env : this.envs) {
             env.ramp(50::ms, 0.);
         }
 
         100::ms => now;
-        me.exit();
+        // me.exit();
     }
 }

@@ -6,7 +6,7 @@
 // Global events and variables
 public class Events {
     static DamageStationEvent damageStation;
-    static Event enterBlackhole;
+    static Event stateChange;
 }
 
 public class Global {

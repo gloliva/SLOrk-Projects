@@ -1,14 +1,16 @@
-@import "../lib/gametrak.ck"
-@import "../lib/global.ck"
-@import "../lib/keyboard.ck"
-@import "../lib/state.ck"
-@import "../lib/util.ck"
+@import {"../blackhole/shephard.ck", "../blackhole/bells.ck"}
+@import {"../lib/gametrak.ck", "../lib/keyboard.ck", "../lib/osc.ck"}
+@import {"../lib/global.ck", "../lib/state.ck", "../lib/util.ck"}
 
+
+// Soundscape code
 Machine.add(me.dir() + "/../soundscape/main.ck");
+
 
 // Globals
 Global.gt @=> GameTrak @ gt;
-Global.state @=> StationState @ state;
+Global.state @=> StationState @ stationState;
+OscReceiver receiver(Events.damageStation, Events.stateChange, stationState.stateChange);
 
 Std.atoi(me.arg(0)) => int senderStation;
 Std.atoi(me.arg(1)) => int sound;
@@ -292,25 +294,44 @@ fun void engineUpdate() {
 if (navigator) spork ~ engineUpdate();
 
 
+fun void warpHandler() {
+    while (true) {
+        gt.buttonPress => now;
+
+        // Each station handles their own STATION --> WARP transition
+        if (stationState.currState == stationState.STATION && !stationState.hold) {
+            Events.stateChange.broadcast();
+            break;
+        }
+    }
+} spork ~ warpHandler();
+
+
+// Warp + Blackhole objects
+ShepardGenerator sg(senderStation, gt);
+BlackholeBells bells(gt);
+
+
 while (true) {
     // Wait for state transition
-    state.stateChange => now;
+    Events.stateChange => now;
+    stationState.transition();
 
-    if (state.currState == state.SOUNDSCAPE) {
-        <<< "Inside Navigator, turning Navigator OFF" >>>;
-        masterGain.ramp(5::second, 0.0);
-    } else if (state.currState == state.STATION) {
+    if (stationState.currState == stationState.STATION && !stationState.hold) {
         <<< "Inside Navigator, turning Navigator ON" >>>;
         masterGain.ramp(5::second, 1.0);
-    } else if (state.currState == state.WARP) {
-        <<< "Inside Navigator, turning Navigator ON" >>>;
+    } else if (stationState.currState == stationState.WARP && !stationState.hold) {
+        // Turn off station sounds
         masterGain.ramp(5::second, 0.0);
 
-        // Lock shred to prevent any more state transitions
-        state.lock();
+        // Turn on Shepard tone
+        spork ~ sg.gtHandler();
+    } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
+        // Cut Shepard Tone and turn on Bells
+        spork ~ sg.stopSound();
+        spork ~ bells.run();
 
-        // Add shephard generator shred + bell shred
-        Machine.add(me.dir() + "/../blackhole/shephard.ck:" + senderStation);
-        Machine.add(me.dir() + "/../blackhole/bells.ck:" + senderStation);
+        // Lock shred to prevent any more state
+        stationState.lock();
     }
 }

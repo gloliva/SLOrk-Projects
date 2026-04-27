@@ -180,27 +180,15 @@ fun void bottleSound() {
 
 fun void gtHandler() {
     while (true) {
-        // Wait for button press
-        gt.buttonPress => now;
+        // Wait for state change
+        state.stateChange => now;
 
-        // Transition to next state
-        state.transition();
-
-        if (state.currState == state.SOUNDSCAPE && !state.hold) {
-            <<< "Inside Soundscape, turning soundscape ON" >>>;
-            master.ramp(5::second, 1.);
-            spaceshipMaster.ramp(5::second, 0.);
-        } else if (state.currState == state.STATION && !state.hold) {
-            <<< "Inside Soundscape, turning soundscape DOWN" >>>;
+        if (state.currState == state.STATION && !state.hold) {
             master.ramp(5::second, 0.);
             spaceshipMaster.ramp(5::second, 1.);
         } else if (state.currState == state.WARP && !state.hold) {
-            <<< "Inside Soundscape, transitioning to Warp, turning soundscape and spaceship DOWN" >>>;
-            master.ramp(5::second, 0.);
             spaceshipMaster.ramp(5::second, 0.);
         }
-
-
     }
 } spork ~ gtHandler();
 

@@ -12,10 +12,10 @@ Std.atoi(me.arg(1)) => int stationId;
 Machine.add(me.dir() + "/../soundscape/main.ck");
 
 
-// State
+// Globals
 Global.gt @=> GameTrak @ gt;
-Global.state @=> StationState @ state;
-OscReceiver receiver(Events.damageStation, Events.enterBlackhole);
+Global.state @=> StationState @ stationState;
+OscReceiver receiver(Events.damageStation, Events.stateChange, stationState.stateChange);
 
 
 public class Station {
@@ -305,40 +305,42 @@ fun void warpHandler() {
 
         // Each station handles their own STATION --> WARP transition
         if (stationState.currState == stationState.STATION && !stationState.hold) {
-            stationState.transition();
+            Events.stateChange.broadcast();
             break;
         }
     }
-}
+} spork ~ warpHandler();
+
+
+// Warp + Blackhole objects
+ShepardGenerator sg(senderStation, gt);
+BlackholeBells bells(gt);
 
 
 while (true) {
     // Wait for state transition
-    state.stateChange => now;
+    Events.stateChange => now;
+    stationState.transition();
 
-    // soundscape
-    if (state.currState == state.SOUNDSCAPE && !state.hold) {
-        <<< "Inside Repair Station, turning Station OFF" >>>;
+    if (stationState.currState == stationState.STATION && !stationState.hold) {
+        // Turn on station sounds
+        for (Envelope env : master) {
+            env.ramp(20::second, 1.);
+        }
+    } else if (stationState.currState == stationState.WARP && !stationState.hold) {
+        // Turn off station sounds
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
-    //station
-    } else if (state.currState == state.STATION && !state.hold) {
-        <<< "Inside Repair Station, doing nothing for now..." >>>;
-    // quitting repair sound
-    } else if (state.currState == state.WARP && !state.hold) {
-        for (Envelope env : master) {
-            env.ramp(5::second, 0.);
-        }
 
-        // Lock shred to prevent any more state transitions
-        state.lock();
+        // Turn on Shepard tone
+        spork ~ sg.gtHandler();
+    } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
+        // Cut Shepard Tone and turn on Bells
+        spork ~ sg.stopSound();
+        spork ~ bells.run();
 
-        // Shepard + Bells handling
-        ShepardGenerator sg(senderStation, gt);
-        BlackholeBells bells(gt);
-
-        // since bells start playing, also fade back all station sounds & reverse them
-        // fadeBack(master);
+        // Lock shred to prevent any more state
+        stationState.lock();
     }
 }

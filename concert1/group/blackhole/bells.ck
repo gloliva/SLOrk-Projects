@@ -77,19 +77,9 @@ public class BlackholeBells {
 
         // Run
         spork ~ gtHandler(gt);
-        spork ~ run();
     }
 
     fun void gtHandler(GameTrak gt) {
-        Events.enterBlackhole => now;
-        2::second => now;
-
-        <<< "Inside Bells, turning sound ON" >>>;
-        for (Envelope env : envs) {
-            env.ramp(50::ms, 1.);
-            1. => bassBell.noteOn;
-        }
-
         while (true) {
             Util.scalef(gt.axis[0], -1., 1., 0.05, 5., 0.5)::second => T;
 
@@ -111,6 +101,14 @@ public class BlackholeBells {
     }
 
     fun void run() {
+        2::second => now;
+
+        <<< "Inside Bells, turning sound ON" >>>;
+        for (Envelope env : envs) {
+            env.ramp(50::ms, 1.);
+            1. => bassBell.noteOn;
+        }
+
         while (true) {
 
             <<< "Beginning sequencing" >>>;

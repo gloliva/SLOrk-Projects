@@ -8,19 +8,21 @@
 Std.atoi(me.arg(0)) => int senderStation;
 
 
+// Soundscape code
+Machine.add(me.dir() + "/../soundscape/main.ck");
+
+
 // Globals variables
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
 
 // OSC handling
 OscSender sender;
-OscReceiver receiver(Events.damageStation, Events.enterBlackhole);
 
 // State management
-StationState.STATION => stationState.currState;
 CaptainState.NONE => int state;
 Envelope masterGain => dac;
-1. => masterGain.value;
+
 
 SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => Delay phoneDelay => masterGain;
 phone.loop(true);
@@ -230,32 +232,41 @@ fun void fadeBack() {
 }
 
 
+// Warp + Blackhole objects
+ShepardGenerator sg(senderStation, gt);
+BlackholeBells bells(gt);
+
+
 // Handle program transitions
 while (true) {
     // Wait for state transition
     gt.buttonPress => now;
     stationState.transition();
 
-    if (stationState.currState == station.STATION && !stationState.hold) {
+    if (stationState.currState == stationState.STATION && !stationState.hold) {
         // Send state change OSC
-        sender.send("/state/station");
+        sender.send("/state/station", 1);
 
         // Turn on station sounds
         masterGain.ramp(5::second, 1.0);
     } else if (stationState.currState == stationState.WARP && !stationState.hold) {
         // Send state change OSC
-        sender.send("/state/warp");
+        sender.send("/state/warp", 1);
 
         // Turn off station sounds
         masterGain.ramp(5::second, 0.0);
 
-        // Shepard + Bells handling
-        ShepardGenerator sg(senderStation, gt);
-        BlackholeBells bells(gt);
+        // Turn on Shepard tone
+        spork ~ sg.gtHandler();
     } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
-        sender.send("/enterBlackhole", 1);
+        sender.send("/state/blackhole", 1);
+
+        // Cut Shepard Tone and turn on Bells
+        spork ~ sg.stopSound();
+        spork ~ bells.run();
+
         // Lock shred to prevent any more state
         stationState.lock();
-        fadeBack();
+        // fadeBack();
     }
 }
