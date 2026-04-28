@@ -236,7 +236,19 @@ for (int i; i < master.size(); i++) {
 
 
 SndBuf2 buf1(me.dir() + "../assets/ElectricHum_BW.44833.wav");
-SndBuf2 buf2(me.dir() + "../assets/SciFiWorkshop_S08SF.1719.wav");
+SndBuf buf2;
+
+if (stationId == 1) {
+    buf2.read(me.dir() + "../assets/SciFiWorkshop_S08SF.1719.wav");
+} else if (stationId == 2) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-1.wav");
+} else if (stationId == 3) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-2.wav");
+} else if (stationId == 4) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-5.wav");
+} else if (stationId == 5) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-6.wav");
+}
 
 1 => buf1.loop;
 1 => buf2.loop;
