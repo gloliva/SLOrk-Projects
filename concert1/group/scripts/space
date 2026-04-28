@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+osascript -e "set Volume 5"
+
+pushd ~/slork/groups/2026/among-us/
+if [ "$1" = "captain" ]; then
+  open scores/space-default-score.pdf
+  chuck -c6 station/captainStation.ck
+elif [ "$1" = "engineer" ]; then
+  open scores/space-engineer1-score.pdf
+  chuck -c6 station/repairStation.ck:"$2"
+elif [ "$1" = "navigator" ]; then
+  open scores/space-default-score.pdf
+  chuck -c6 station/station.ck:5 visual/stardust.ck
+else
+  echo "First argument should be either 'captain', 'engineer', or 'navigator'"
+fi
+popd

@@ -13,3 +13,8 @@ public class Global {
     static GameTrak gt(0);
     static StationState state;
 }
+
+public class MasterGain {
+    static Envelope soundscape;
+    static Envelope spaceship;
+}

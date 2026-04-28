@@ -21,18 +21,17 @@ bpm.tempo(80);
 // let's use this four-note chord to make sure we get all four voices
 chords.major @=> t.chord;
 
-Envelope master;
-1. => master.value;
 
-Gain mix => LPF lpf => ADSR env1 => NRev reverb => Delay delay => Pan2 panLeft => Dyno limiter1 => master => dac.left;
-mix => lpf => env1 => reverb => delay => Pan2 panRight => Dyno limiter2 => master => dac.right;
+// Set master gains
+1. => MasterGain.soundscape.value;
+0. => MasterGain.spaceship.value;
+0.1 => MasterGain.spaceship.gain;
 
 
-// Spaceship noise
-CNoise noise;
-noise => LPF noiseLpf(300.) => Envelope spaceshipMaster => dac;
-spaceshipMaster.value(0.);
-0.1 => spaceshipMaster.gain;
+Gain mix => LPF lpf => ADSR env1 => NRev reverb => Delay delay => Pan2 panLeft => Dyno limiter1 => MasterGain.soundscape => dac.left;
+mix => lpf => env1 => reverb => delay => Pan2 panRight => Dyno limiter2 => MasterGain.soundscape => dac.right;
+CNoise noise => LPF noiseLpf(300.) => MasterGain.spaceship => dac;
+
 
 // waveforms setup
 4 => int maxVoices;
@@ -79,8 +78,6 @@ SinOsc lfo => blackhole;
 float lfoFreq;
 
 5::ms => dur T;
-
-// right now applyLfo is only called once
 
 // lfo modulates lpf's freq and osc freq
 fun void applyLfo()
@@ -158,8 +155,8 @@ fun void playChord(float position)
 }
 
 BlowBotl bottle;
-bottle => LPF lpfBottle => Chorus sound2ChorusL => NRev sound2revL => master;
-bottle => lpfBottle => NRev sound2revR => master;
+bottle => LPF lpfBottle => Chorus sound2ChorusL => NRev sound2revL => MasterGain.soundscape;
+bottle => lpfBottle => NRev sound2revR => MasterGain.soundscape;
 
 1000 => lpf.freq;
 
@@ -177,20 +174,6 @@ fun void bottleSound() {
 
     bottleNoteOnVal => bottle.noteOn;
 }
-
-fun void gtHandler() {
-    while (true) {
-        // Wait for state change
-        state.stateChange => now;
-
-        if (state.currState == state.STATION && !state.hold) {
-            master.ramp(5::second, 0.);
-            spaceshipMaster.ramp(5::second, 1.);
-        } else if (state.currState == state.WARP && !state.hold) {
-            spaceshipMaster.ramp(5::second, 0.);
-        }
-    }
-} spork ~ gtHandler();
 
 fun void print()
 {

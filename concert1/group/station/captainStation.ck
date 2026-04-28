@@ -243,13 +243,18 @@ while (true) {
         // Send state change OSC
         sender.send("/state/station", 1);
 
+        // Turn off soundscape sounds
+        MasterGain.soundscape.ramp(5::second, 0.);
+
         // Turn on station sounds
+        MasterGain.spaceship.ramp(5::second, 1.);
         masterGain.ramp(5::second, 1.0);
     } else if (stationState.currState == stationState.WARP && !stationState.hold) {
         // Send state change OSC
         sender.send("/state/warp", 1);
 
         // Turn off station sounds
+        MasterGain.spaceship.ramp(5::second, 0.);
         masterGain.ramp(5::second, 0.0);
 
         // Turn on Shepard tone

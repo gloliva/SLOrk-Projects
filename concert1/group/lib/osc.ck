@@ -30,12 +30,10 @@ public class OscReceiver {
     // Events
     DamageStationEvent @ damageStation;
     Event @ stateChange;
-    Event @ soundscapeSignal;
 
-    fun @construct(DamageStationEvent damageStation, Event stateChange, Event soundscapeSignal) {
+    fun @construct(DamageStationEvent damageStation, Event stateChange) {
         damageStation @=> this.damageStation;
         stateChange @=> this.stateChange;
-        soundscapeSignal @=> this.soundscapeSignal;
         OscReceiver(this.DEFAULT_PORT);
     }
 
@@ -55,9 +53,6 @@ public class OscReceiver {
                     this.damageStation.broadcast();
                 } else if (this.msg.address == "/state/station" || this.msg.address == "/state/blackhole") {
                     this.stateChange.broadcast();
-                    this.soundscapeSignal.broadcast();
-                } else if (this.msg.address == "/state/warp") {
-                    this.soundscapeSignal.broadcast();
                 }
             }
         }

@@ -15,7 +15,7 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 // Globals
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
-OscReceiver receiver(Events.damageStation, Events.stateChange, stationState.stateChange);
+OscReceiver receiver(Events.damageStation, Events.stateChange);
 
 
 public class Station {
@@ -324,12 +324,17 @@ while (true) {
     stationState.transition();
 
     if (stationState.currState == stationState.STATION && !stationState.hold) {
+        // Turn off soundscape sounds
+        MasterGain.soundscape.ramp(5::second, 0.);
+
         // Turn on station sounds
+        MasterGain.spaceship.ramp(5::second, 1.);
         for (Envelope env : master) {
             env.ramp(20::second, 1.);
         }
     } else if (stationState.currState == stationState.WARP && !stationState.hold) {
         // Turn off station sounds
+        MasterGain.spaceship.ramp(5::second, 0.);
         for (Envelope env : master) {
             env.ramp(5::second, 0.);
         }
