@@ -38,7 +38,7 @@ public class ShepardGenerator {
         // normalize to 1.0 at x==MU
         1 / Math.gauss(MU, MU, SIGMA) => this.SCALE;
         // increment per unit time (use negative for descending)
-        -.004 => this.INC;
+        .004 => this.INC;
         // unit time (change interval)
         10::ms => this.T;
 
@@ -67,8 +67,10 @@ public class ShepardGenerator {
 
         // Run
         spork ~ this.run();
-        // spork ~ this.stopSound();
-        // spork ~ this.gtHandler();
+    }
+
+    fun void reverse() {
+        this.INC * -1 => this.INC;
     }
 
     fun void chorus(float freq, float depth, float mix) {

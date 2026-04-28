@@ -7,6 +7,8 @@
 public class Events {
     static DamageStationEvent damageStation;
     static Event stateChange;
+    static Event shepardReverse;
+    static Event stationFadeOut;
 }
 
 public class Global {

@@ -21,7 +21,6 @@ bpm.tempo(80);
 // let's use this four-note chord to make sure we get all four voices
 chords.major @=> t.chord;
 
-
 // Set master gains
 1. => MasterGain.soundscape.value;
 0. => MasterGain.spaceship.value;
@@ -37,7 +36,7 @@ CNoise noise => LPF noiseLpf(300.) => MasterGain.spaceship => dac;
 4 => int maxVoices;
 SawOsc oscs[0];
 float baseFreqs[0];
-1 => float voiceGain;
+0.8 => float voiceGain;
 
 // form chords
 for (0 => int i; i < maxVoices; i++)
@@ -78,6 +77,7 @@ SinOsc lfo => blackhole;
 float lfoFreq;
 
 5::ms => dur T;
+
 
 // lfo modulates lpf's freq and osc freq
 fun void applyLfo()
@@ -121,7 +121,13 @@ bpm.bar => dur chordTime;
 
 fun void playChord(float position)
 {
-    [-12, 0, 12] @=> int offset[];
+    int offset[];
+
+    //if (Math.random2(0, 1)) {
+        [-12, 0, 12] @=> offset;
+    // } else {
+    //     [-10, 0, 14] @=> offset;
+    // }
 
     // frequencies for this chord
     for (0 => int i; i < t.chord.cap() && i < oscs.cap(); i++)
@@ -175,6 +181,7 @@ fun void bottleSound() {
     bottleNoteOnVal => bottle.noteOn;
 }
 
+
 fun void print()
 {
     // time loop
@@ -188,12 +195,15 @@ fun void print()
     }
 }
 
-// spork ~ print();
+//spork ~ print();
 
 fun void axesHandler() {
     while (true) {
         // left handle's z => transposition
         (Math.round((gt.axis[2] + 1) / 2 * 7) * 12) => chordPosition;
+        // also map to mix
+        (gt.axis[2]+1)/2 => reverb.mix;
+        //(gt.axis[2]+1)/2 => reverb.gain;
 
         // left handle's y => lfo speed [-1,1] => [0,100]
         (gt.axis[1] + 1) / 2 * 50 + 0.1 => lfoFreq;
@@ -203,12 +213,12 @@ fun void axesHandler() {
         if (gt.axis[0] < -0.5) {
             chords.minor @=> t.chord;
         } else if (gt.axis[0] > 0.5) {
-            chords.major @=> t.chord;
+            chords.min79 @=> t.chord;
         }
 
         // right handle's x => tempo
         // [40, 220]
-        (gt.axis[3] + 1) / 2 * 180 + 40 => bpm.tempo;
+        (gt.axis[3] + 1) / 2 * 200 + 40 => bpm.tempo;
 
         // both handles up => sustain mode
         if (gt.axis[2] > 0.45 && gt.axis[5] > 0.45) {

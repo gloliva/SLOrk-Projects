@@ -9,6 +9,7 @@ public class BlackholeBells {
     Gain mixer[NUM_CHANNELS];
     NRev rev[NUM_CHANNELS];
     Envelope envs[NUM_CHANNELS];
+    Dyno lim[NUM_CHANNELS];
     Delay del;
 
     // Timing
@@ -47,11 +48,14 @@ public class BlackholeBells {
         // Handle remaining UGens
         for (int i; i < NUM_CHANNELS; i++) {
             // UGen chaining
-            mixer[i] => rev[i] => envs[i] => dac.chan(i);
+            mixer[i] => rev[i] => envs[i] => lim[i] => dac.chan(i);
 
             // Set envs
             0.5 => envs[i].gain;
             0. => envs[i].value;
+
+            // Set limiter
+            lim[i].limit();
         }
 
         // Handle delay

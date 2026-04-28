@@ -14,6 +14,7 @@ Global.state @=> StationState @ stationState;
 
 // OSC handling
 OscSender sender;
+OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardReverse, Events.stationFadeOut);
 
 // State management
 CaptainState.NONE => int state;
@@ -181,56 +182,101 @@ fun void stateHandler() {
 
 spork ~ stateHandler();
 
+// --------------------Fade Back--------------------//
+
+SinOsc lfo => blackhole;
+0.8 => lfo.gain;
+0.5 => lfo.freq;
+
+BPF fadeBackBpf;
+NRev fadeBackRev;
+Delay fadeBackDelay;
+Dyno limit;
+limit.limit();
+
+
+// lfo modulates bpf's freq
+fun void applyLfo()
+{
+    1000.0 => float filterCenter;
+    200.0 => float filterDepth;
+    // 1.0 => float pitchDepth;
+
+    while (true)
+    {
+        // gain
+        lfo.last() => float lfoValue;
+
+        // modulate lpf's freq
+        Math.max(50.0, filterCenter + filterDepth * lfoValue) => fadeBackBpf.freq;
+        <<< "Modulating", fadeBackBpf.freq >>>;
+        5::ms => now;
+    }
+}
+
 
 fun void fadeBack() {
+    // wait for 10 seconds
+    20::second => dur fadeBackDur;
 
-    masterGain.ramp(5::second, 1.);
+    fadeBackDur => now;
+
+    // ramp back in volume
+    masterGain.ramp(fadeBackDur, 1.);
+
+    // quit engine shred to avoid fighting with volume control 
+    if (engineShred != null) engineShred.exit();
+    // we can also quit the handler shred thus fix the volumes
+    // if (stateHandlerShred != null) stateHandlerShred.exit();
+
+    // 1 => phoneGain.gain;
+    // 3 => radioGain.gain;
     
-    // //10::second => now;
+    // reverse playbacks
+    phone.samples() => phone.pos;
+    -1. => phone.rate;
 
-    // // Stop engineUpdate from fighting the reversed state
-    // if (engineShred != null) engineShred.exit();
+    radio.samples() => radio.pos;
+    -1. => radio.rate;
 
-    // // reverse playbacks
-    // phone.samples() => phone.pos;
-    // -1. => phone.rate;
+    engineBuf.samples() => engineBuf.pos;
+    -1. => engineBuf.rate;
 
-    // radio.samples() => radio.pos;
-    // -1. => radio.rate;
+    // activate effects
+    1.0::second => fadeBackDelay.max;
+    0.5::second => fadeBackDelay.delay;
 
-    // engineBuf.samples() => engineBuf.pos;
-    // -1. => engineBuf.rate;
+    0.5 => fadeBackRev.gain;
+    0.5 => fadeBackRev.mix;
 
-    // 1::second => phoneDelay.delay;
-    // 1::second => radioDelay.delay;
-    // 1::second => engineDelay.delay;
+    1000 => fadeBackBpf.freq;
+    1 => fadeBackBpf.Q;
+
+    // reroute
+    masterGain =< dac;
+    masterGain => fadeBackBpf => fadeBackDelay => fadeBackRev => limit => dac;
+
+    // modulate this BPF
+    spork ~ applyLfo();
 
     // PS route
-    phoneGain.gain(0);
-    radioGain.gain(0);
-    engineGain.gain(0);
-
-    phonePS.start();
-    phonePS.out().gain(0.1);
-    phonePS.out() => masterGain;
-
-    radioPS.start();
-    radioPS.out().gain(0.1);
-    radioPS.out() => masterGain;
-
-    enginePS.start();
-    enginePS.out().gain(0.1);
-    enginePS.out() => masterGain;
-
-
-    // fade back in over 5 seconds
-    // masterGain.ramp(5::second, 1.);
+    
+    // phonePS.start();
+    // phonePS.out().gain(0.1);
+    // phonePS.out() => masterGain;
 }
+
 
 
 // Warp + Blackhole objects
 ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
+
+
+fun void shepardHandler() {
+    Events.shepardReverse => now;
+    sg.reverse();
+} spork ~ shepardHandler();
 
 
 // Handle program transitions
@@ -266,8 +312,10 @@ while (true) {
         spork ~ sg.stopSound();
         spork ~ bells.run();
 
+        
         // Lock shred to prevent any more state
         stationState.lock();
-        // fadeBack();
+        
+        fadeBack();
     }
 }

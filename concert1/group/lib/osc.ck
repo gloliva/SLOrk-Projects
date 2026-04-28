@@ -30,10 +30,14 @@ public class OscReceiver {
     // Events
     DamageStationEvent @ damageStation;
     Event @ stateChange;
+    Event @ shepardReverse;
+    Event @ stationFadeOut;
 
-    fun @construct(DamageStationEvent damageStation, Event stateChange) {
+    fun @construct(DamageStationEvent damageStation, Event stateChange, Event shepardReverse, Event stationFadeOut) {
         damageStation @=> this.damageStation;
         stateChange @=> this.stateChange;
+        shepardReverse @=> this.shepardReverse;
+        stationFadeOut @=> this.stationFadeOut;
         OscReceiver(this.DEFAULT_PORT);
     }
 
@@ -53,6 +57,10 @@ public class OscReceiver {
                     this.damageStation.broadcast();
                 } else if (this.msg.address == "/state/station" || this.msg.address == "/state/blackhole") {
                     this.stateChange.broadcast();
+                } else if (this.msg.address == "/shepard/reverse") {
+                    this.shepardReverse.broadcast();
+                } else if (this.msg.address == "/station/fadeOut") {
+
                 }
             }
         }

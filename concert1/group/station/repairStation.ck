@@ -15,7 +15,7 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 // Globals
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
-OscReceiver receiver(Events.damageStation, Events.stateChange);
+OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardReverse, Events.stationFadeOut);
 
 
 public class Station {
@@ -211,17 +211,19 @@ public class Station {
     fun void reverseAll() {
         alarm.samples() => alarm.pos;
         -1. => alarm.rate;
+        // silenece alarm for now
+        0.05 => alarm.gain;
 
-        for (SndBuf buf : damageSounds) {
-            buf.samples() => buf.pos;
-            -1. => buf.rate;
-        }
-        for (SndBuf buf : repairSounds) {
-            buf.samples() => buf.pos;
-            -1. => buf.rate;
-        }
-        fixedSound.samples() => fixedSound.pos;
-        -1. => fixedSound.rate;
+        // for (SndBuf buf : damageSounds) {
+        //     buf.samples() => buf.pos;
+        //     -1. => buf.rate;
+        // }
+        // for (SndBuf buf : repairSounds) {
+        //     buf.samples() => buf.pos;
+        //     -1. => buf.rate;
+        // }
+        // fixedSound.samples() => fixedSound.pos;
+        // -1. => fixedSound.rate;
     }
 
 }
@@ -293,20 +295,6 @@ spork ~ station.interact(master);
 spork ~ station.oscListen(Events.damageStation);
 
 
-fun void fadeBack(Envelope master[]) {
-    10::second => now;
-    // reverse station specific SndBufs
-    station.reverseAll();
-    // pull in current playback location
-    buf1.samples() => buf1.pos;
-    buf2.samples() => buf2.pos;
-    -1. => buf1.rate;
-    -1. => buf2.rate;
-    for (Envelope env : master) {
-        env.ramp(5::second, 1.);
-    }
-}
-
 
 fun void warpHandler() {
     while (true) {
@@ -324,6 +312,105 @@ fun void warpHandler() {
 // Warp + Blackhole objects
 ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
+
+
+fun void shepardHandler() {
+    Events.shepardReverse => now;
+    sg.reverse();
+} spork ~ shepardHandler();
+
+
+// --------------------Fade Back--------------------//
+// effects to be added after fade back
+NRev fadeBackRev;
+BPF fadeBackBpf;
+Delay fadeBackDelay;
+Bitcrusher fadeBackBc;
+
+fun void masterVolumeHandler(Envelope master[]) {
+    while (true) {
+        for (Envelope env : master) {
+            (gt.axis[2]+1)/2 - 0.50 => env.gain;
+            <<<"Let's see the actual gain ", env.gain()>>>;
+        }
+        10::ms => now;
+    }
+}
+
+fun void degradation(Envelope master[]){
+
+    0.1 => fadeBackBc.gain;
+    24 => int numBits;
+    2 => int downsampleFactor;
+
+    while (true){
+   // while (master[0].value() > 0) {
+        numBits => fadeBackBc.bits;
+        downsampleFactor => fadeBackBc.downsample;
+
+        if (numBits >= 12)
+            numBits - 2 => numBits;
+
+        if (downsampleFactor <= 4)
+            downsampleFactor + 2 => downsampleFactor;
+
+        1::second => now;
+    }
+}
+
+
+fun void fadeBack(Envelope master[]) {
+
+    20 :: second => dur fadeBackDur;
+
+    //must habr
+    fadeBackDur => now;
+
+    for (Envelope env : master) {
+        env.ramp(fadeBackDur, 1.);
+    }
+
+    // reverse station specific sndBufs' rate
+    // does it make sense for the alarm sound to even come back
+    station.reverseAll();
+
+    // reverse the two local bufs
+    // buf1.samples() => buf1.pos;
+    // buf2.samples() => buf2.pos;
+    // -0.5 => buf1.rate;
+    // -0.5 => buf2.rate;
+
+    //// adjust their gains
+    0 => gains[0].gain;
+    0 => gains[1].gain;
+
+    // reroute
+    for (int i; i < master.size(); i++) {
+        master[i] =< blocker[i];
+    }
+
+    for (int i; i < master.size(); i++) {
+        master[i] => fadeBackBc => fadeBackBpf => fadeBackDelay => fadeBackRev => blocker[i];
+    }
+
+    1.0::second => fadeBackDelay.max;
+    0.5::second => fadeBackDelay.delay;
+
+    0.1 => fadeBackRev.gain;
+    0.5 => fadeBackRev.mix;
+
+    1500 => fadeBackBpf.freq;
+    1 => fadeBackBpf.Q;
+
+    // 0.1 => fadeBackBc.gain;
+    // 24 => fadeBackBc.bits;
+    // 2 => fadeBackBc.downsample;
+
+    spork ~ degradation(master);
+
+    spork ~ masterVolumeHandler(master);
+
+}
 
 
 while (true) {
@@ -357,6 +444,9 @@ while (true) {
         // Cut Shepard Tone and turn on Bells
         spork ~ sg.stopSound();
         spork ~ bells.run();
+
+        // start fading back the mastered sound
+        fadeBack(master);
 
         // Lock shred to prevent any more state
         stationState.lock();

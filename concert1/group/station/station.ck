@@ -10,7 +10,8 @@ Machine.add(me.dir() + "/../soundscape/main.ck");
 // Globals
 Global.gt @=> GameTrak @ gt;
 Global.state @=> StationState @ stationState;
-OscReceiver receiver(Events.damageStation, Events.stateChange);
+OscSender sender;
+OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardReverse, Events.stationFadeOut);
 
 Std.atoi(me.arg(0)) => int sound;
 Std.atoi(me.arg(1)) => int testRun;
@@ -43,7 +44,7 @@ for (int i; i < levels.size(); i++) {
 Envelope masterGain;
 masterGain.value(0);
 
-// Connect gains to DAC (this is bad, be better)
+// Connect gains to DAC
 dac.channels() => int numChans;
 for (int i; i < gainsLeft.size(); i++) {
     for (int c; c + 1 < numChans; 2 +=> c) {
@@ -52,91 +53,91 @@ for (int i; i < gainsLeft.size(); i++) {
     }
 }
 
-// -------------------- SOUND 2 -------------------- //
-BlowBotl bottle;
-bottle => Chorus sound2ChorusL => NRev sound2revL => gainsLeft[1];
-bottle => NRev sound2revR => gainsRight[1];
+// // -------------------- SOUND 2 -------------------- //
+// BlowBotl bottle;
+// bottle => Chorus sound2ChorusL => NRev sound2revL => gainsLeft[1];
+// bottle => NRev sound2revR => gainsRight[1];
 
-fun void sound2() {
-    0.468725 => bottle.noiseGain;
-    8.724864 => bottle.vibratoFreq;
-    0.595734 => bottle.vibratoGain;
-    0.702008 => bottle.volume;
+// fun void sound2() {
+//     0.468725 => bottle.noiseGain;
+//     8.724864 => bottle.vibratoFreq;
+//     0.595734 => bottle.vibratoGain;
+//     0.702008 => bottle.volume;
 
-    Std.mtof(60) => bottle.freq;
+//     Std.mtof(60) => bottle.freq;
 
-    while (true) {
+//     while (true) {
 
-        .8 => bottle.noteOn;
+//         .8 => bottle.noteOn;
 
-        // advance time
-        1::second => now;
-    }
-} spork ~ sound2();
+//         // advance time
+//         1::second => now;
+//     }
+// } spork ~ sound2();
 
-// -------------------- SOUND 3 -------------------- //
-BlowHole hole => ADSR beep => gainsLeft[2];
-beep => gainsRight[2];
+// // -------------------- SOUND 3 -------------------- //
+// BlowHole hole => ADSR beep => gainsLeft[2];
+// beep => gainsRight[2];
 
-beep.set(35::ms, 50::ms, 0.7, 100::ms);
+// beep.set(35::ms, 50::ms, 0.7, 100::ms);
 
-0.742307 => hole.reed;
-0.862736 => hole.noiseGain;
-0.642372 => hole.tonehole;
-0.051535 => hole.vent;
-0.250131 => hole.pressure;
-80 => hole.freq;
-0.8 => hole.noteOn;
+// 0.742307 => hole.reed;
+// 0.862736 => hole.noiseGain;
+// 0.642372 => hole.tonehole;
+// 0.051535 => hole.vent;
+// 0.250131 => hole.pressure;
+// 80 => hole.freq;
+// 0.8 => hole.noteOn;
 
 750 => int beepRate;
-fun void sound3(dur initDelay) {
-    initDelay => now;
-    while (true) {
-        beep.keyOn(1);
-        100::ms => now;
-        beep.keyOff(1);
-        beepRate::ms => now;
-    }
-} spork ~ sound3(750::ms);
+// fun void sound3(dur initDelay) {
+//     initDelay => now;
+//     while (true) {
+//         beep.keyOn(1);
+//         100::ms => now;
+//         beep.keyOff(1);
+//         beepRate::ms => now;
+//     }
+// } spork ~ sound3(750::ms);
 
 
-// -------------------- SOUND 4 -------------------- //
+// // -------------------- SOUND 4 -------------------- //
 CNoise sound4Noise("white");
 sound4Noise => BPF sound4Bpf => ADSR sound4Env => NRev sound4Rev => gainsLeft[3];
-sound4Env => NRev sound4RevR => gainsRight[3];
-0.2 => sound4Rev.mix;
-0.2 => sound4RevR.mix;
+// sound4Env => NRev sound4RevR => gainsRight[3];
+// 0.2 => sound4Rev.mix;
+// 0.2 => sound4RevR.mix;
 8. => sound4Bpf.Q;
-3. => sound4Env.gain;
+// 3. => sound4Env.gain;
 
-fun void sound4() {
-    sound4Env.set(20::ms, 180::ms, 0.15, 350::ms);
-    while (true) {
-        Math.random2f(350., 1400.) => sound4Bpf.freq;
-        Math.random2(0, 2) => int kind;
-        if (kind == 0) {
-            sound4Env.keyOn();
-            Math.random2(120, 320)::ms => now;
-            sound4Env.keyOff();
-            Math.random2(400, 700)::ms => now;
-        } else if (kind == 1) {
-            sound4Env.keyOn();
-            Math.random2(500, 900)::ms => now;
-            sound4Env.keyOff();
-            Math.random2(500, 900)::ms => now;
-        } else {
-            sound4Env.keyOn();
-            80::ms => now;
-            sound4Env.keyOff();
-            120::ms => now;
-            sound4Env.keyOn();
-            Math.random2(150, 300)::ms => now;
-            sound4Env.keyOff();
-            Math.random2(300, 600)::ms => now;
-        }
-        Math.random2(1200, 3500)::ms => now;
-    }
-} spork ~ sound4();
+// fun void sound4() {
+//     sound4Env.set(20::ms, 180::ms, 0.15, 350::ms);
+//     while (true) {
+//         Math.random2f(350., 1400.) => sound4Bpf.freq;
+//         Math.random2(0, 2) => int kind;
+//         if (kind == 0) {
+//             sound4Env.keyOn();
+//             Math.random2(120, 320)::ms => now;
+//             sound4Env.keyOff();
+//             Math.random2(400, 700)::ms => now;
+//         } else if (kind == 1) {
+//             sound4Env.keyOn();
+//             Math.random2(500, 900)::ms => now;
+//             sound4Env.keyOff();
+//             Math.random2(500, 900)::ms => now;
+//         } else {
+//             sound4Env.keyOn();
+//             80::ms => now;
+//             sound4Env.keyOff();
+//             120::ms => now;
+//             sound4Env.keyOn();
+//             Math.random2(150, 300)::ms => now;
+//             sound4Env.keyOff();
+//             Math.random2(300, 600)::ms => now;
+//         }
+//         Math.random2(1200, 3500)::ms => now;
+//     }
+// } spork ~ sound4();
 
 
 // -------------------- SOUND 5 -------------------- //
@@ -312,6 +313,35 @@ ShepardGenerator sg(gt);
 BlackholeBells bells(gt);
 
 
+BPF fadeBackBpf;
+NRev fadeBackRev;
+Delay fadeBackDelay;
+
+fun void fadeBack(Envelope master) {
+    // wait for 10 seconds
+    20::second => dur fadeBackDur;
+
+    fadeBackDur => now;
+
+    master.ramp(fadeBackDur, 1.);
+
+    master =< dac;
+
+    master => fadeBackBpf => fadeBackDelay => fadeBackRev => dac;
+
+    // activate effects
+    1.0::second => fadeBackDelay.max;
+    0.5::second => fadeBackDelay.delay;
+
+    0.5 => fadeBackRev.gain;
+    0.5 => fadeBackRev.mix;
+
+    1000 => fadeBackBpf.freq;
+    1 => fadeBackBpf.Q;
+}
+
+
+
 while (true) {
     // Wait for state transition
     if (!testRun) {
@@ -335,6 +365,9 @@ while (true) {
 
         // Turn on Shepard tone
         spork ~ sg.gtHandler();
+
+        // Send Shepard reversal OSC message
+        sender.send("/shepard/reverse", 1);
     } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
         // Cut Shepard Tone and turn on Bells
         spork ~ sg.stopSound();
@@ -342,5 +375,7 @@ while (true) {
 
         // Lock shred to prevent any more state
         stationState.lock();
+
+        fadeBack(masterGain);
     }
 }
