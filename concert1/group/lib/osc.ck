@@ -33,6 +33,12 @@ public class OscReceiver {
     Event @ shepardReverse;
     Event @ stationFadeOut;
 
+    // State transition ACKs
+    int receivedStateStation;
+    int receivedStateWarp;
+    int receivedStateBlackhole;
+    int receivedShepardReverse;
+
     fun @construct(DamageStationEvent damageStation, Event stateChange, Event shepardReverse, Event stationFadeOut) {
         damageStation @=> this.damageStation;
         stateChange @=> this.stateChange;
@@ -55,12 +61,18 @@ public class OscReceiver {
                 if (this.msg.address == "/damage") {
                     this.msg.getInt(0) => this.damageStation.stationId;
                     this.damageStation.broadcast();
-                } else if (this.msg.address == "/state/station" || this.msg.address == "/state/blackhole") {
+                } else if (this.msg.address == "/state/station" && !this.receivedStateStation) {
                     this.stateChange.broadcast();
-                } else if (this.msg.address == "/state/warp") {
+                    1 => this.receivedStateStation;
+                } else if (this.msg.address == "/state/warp" && !this.receivedStateWarp) {
                     this.stationFadeOut.broadcast();
-                } else if (this.msg.address == "/shepard/reverse") {
+                    1 => this.receivedStateWarp;
+                } else if (this.msg.address == "/state/blackhole" && !this.receivedStateBlackhole) {
+                    this.stateChange.broadcast();
+                    1 => this.receivedStateBlackhole;
+                } else if (this.msg.address == "/shepard/reverse" && !this.receivedShepardReverse) {
                     this.shepardReverse.broadcast();
+                    1 => this.receivedShepardReverse;
                 }
             }
         }

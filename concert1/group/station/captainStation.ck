@@ -279,6 +279,14 @@ fun void shepardHandler() {
 } spork ~ shepardHandler();
 
 
+fun void sendStateChange(string addr) {
+    while (true) {
+        sender.send(addr, 1);
+        50::ms => now;
+    }
+}
+
+
 // Handle program transitions
 while (true) {
     // Wait for state transition
@@ -287,7 +295,7 @@ while (true) {
 
     if (stationState.currState == stationState.STATION && !stationState.hold) {
         // Send state change OSC
-        sender.send("/state/station", 1);
+        spork ~ sendStateChange("/state/station");
 
         // Turn off soundscape sounds
         MasterGain.soundscape.ramp(5::second, 0.);
@@ -297,7 +305,7 @@ while (true) {
         masterGain.ramp(5::second, 1.0);
     } else if (stationState.currState == stationState.WARP && !stationState.hold) {
         // Send state change OSC
-        sender.send("/state/warp", 1);
+        spork ~ sendStateChange("/state/warp");
 
         // Turn off station sounds
         MasterGain.spaceship.ramp(5::second, 0.);
@@ -306,16 +314,15 @@ while (true) {
         // Turn on Shepard tone
         spork ~ sg.gtHandler();
     } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
-        sender.send("/state/blackhole", 1);
+        spork ~ sendStateChange("/state/blackhole");
 
         // Cut Shepard Tone and turn on Bells
         spork ~ sg.stopSound();
         spork ~ bells.run();
 
-        
         // Lock shred to prevent any more state
         stationState.lock();
-        
+
         fadeBack();
     }
 }

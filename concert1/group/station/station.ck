@@ -341,6 +341,13 @@ fun void fadeBack(Envelope master) {
 }
 
 
+fun void sendStateChange(string addr) {
+    while (true) {
+        sender.send(addr, 1);
+        50::ms => now;
+    }
+}
+
 
 while (true) {
     // Wait for state transition
@@ -367,7 +374,7 @@ while (true) {
         spork ~ sg.gtHandler();
 
         // Send Shepard reversal OSC message
-        sender.send("/shepard/reverse", 1);
+        spork ~ sendStateChange("/shepard/reverse");
     } else if (stationState.currState == stationState.BLACKHOLE && !stationState.hold) {
         // Cut Shepard Tone and turn on Bells
         spork ~ sg.stopSound();
