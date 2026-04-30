@@ -127,7 +127,7 @@ public class BlackholeBells {
 
             <<< "Stopping sequencing" >>>;
             while (!sequencing) {
-                1::ms => now;
+                10::ms => now;
             }
         }
     }
@@ -150,7 +150,7 @@ public class BlackholeBells {
 
             now => time start;
             while (start + T > now) {
-                1::ms => now;
+                10::ms => now;
             }
         }
     }

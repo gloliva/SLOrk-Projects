@@ -79,7 +79,6 @@ public class Station {
         me.dir() + "../assets/SteampunkDevice_S011SF.758.wav" => repairSounds[3].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.759.wav" => repairSounds[4].read;
         me.dir() + "../assets/SteampunkDevice_S011SF.752.wav" => repairSounds[5].read;
-        // me.dir() + "../assets/SuperheroGadgetOff_HV.814.wav" => repairSounds[5].read;
 
         me.dir() + "../assets/SciFiWeapon_S08SF.1677.wav" => fixedSound.read;
 
@@ -163,8 +162,6 @@ public class Station {
         crashEnv.keyOff(1);
     }
 
-
-
     fun void interact(Envelope master[]) {
         while (true) {
             this.kb.event => now;
@@ -211,8 +208,9 @@ public class Station {
     fun void reverseAll() {
         alarm.samples() => alarm.pos;
         -1. => alarm.rate;
+        1 => alarm.loop;
         // silenece alarm for now
-        0.05 => alarm.gain;
+        0.1 => alarm.gain;  // TODO: determine if this is the correct gain
 
         // for (SndBuf buf : damageSounds) {
         //     buf.samples() => buf.pos;
@@ -240,17 +238,16 @@ for (int i; i < master.size(); i++) {
 SndBuf2 buf1(me.dir() + "../assets/ElectricHum_BW.44833.wav");
 SndBuf buf2;
 
-if (stationId == 1) {
+if (stationId == 1 || stationId == 3) {
     buf2.read(me.dir() + "../assets/SciFiWorkshop_S08SF.1719.wav");
-} else if (stationId == 2) {
+} else if (stationId == 2 || stationId == 4) {
     buf2.read(me.dir() + "../assets/Stations/StationSound-1.wav");
-} else if (stationId == 3) {
-    buf2.read(me.dir() + "../assets/Stations/StationSound-2.wav");
-} else if (stationId == 4) {
-    buf2.read(me.dir() + "../assets/Stations/StationSound-5.wav");
 } else if (stationId == 5) {
-    buf2.read(me.dir() + "../assets/Stations/StationSound-6.wav");
+    buf2.read(me.dir() + "../assets/Stations/StationSound-5.wav");
 }
+// } else if (stationId == 5) {
+//     buf2.read(me.dir() + "../assets/Stations/StationSound-3.wav");
+// }
 
 1 => buf1.loop;
 1 => buf2.loop;
@@ -298,7 +295,11 @@ spork ~ station.oscListen(Events.damageStation);
 
 fun void warpHandler() {
     while (true) {
-        gt.buttonPress => now;
+        if (!testRun) {
+            Events.stationFadeOut => now;
+        } else {
+            gt.buttonPress => now;
+        }
 
         // Each station handles their own STATION --> WARP transition
         if (stationState.currState == stationState.STATION && !stationState.hold) {
@@ -435,7 +436,7 @@ while (true) {
         // Turn off station sounds
         MasterGain.spaceship.ramp(5::second, 0.);
         for (Envelope env : master) {
-            env.ramp(5::second, 0.);
+            env.ramp(15::second, 0.);
         }
 
         // Turn on Shepard tone

@@ -57,10 +57,10 @@ public class OscReceiver {
                     this.damageStation.broadcast();
                 } else if (this.msg.address == "/state/station" || this.msg.address == "/state/blackhole") {
                     this.stateChange.broadcast();
+                } else if (this.msg.address == "/state/warp") {
+                    this.stationFadeOut.broadcast();
                 } else if (this.msg.address == "/shepard/reverse") {
                     this.shepardReverse.broadcast();
-                } else if (this.msg.address == "/station/fadeOut") {
-
                 }
             }
         }
