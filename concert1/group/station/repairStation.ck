@@ -5,7 +5,7 @@
 
 // cmd line args to assign station ID
 Std.atoi(me.arg(0)) => int stationId;
-Std.atoi(me.arg(1)) => int testRun;
+Std.atoi(me.arg(1)) => int localRun;
 
 
 // Soundscape code
@@ -18,7 +18,12 @@ Global.state @=> StationState @ stationState;
 OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardReverse, Events.stationFadeOut);
 
 
-public class Station {
+// Warp + Blackhole objects
+ShepardGenerator sg(gt);
+BlackholeBells bells(gt);
+
+
+class Station {
     // Keyboard handling
     int keyIdx;
     Keyboard @ kb;
@@ -87,7 +92,7 @@ public class Station {
         crashEnv.set(25::ms, 250::ms, 0.5, 3::second);
 
         alarm => master;
-        0.2 => alarm.gain;
+        0.3 => alarm.gain;
         0 => alarm.play;
 
         // Crash sound
@@ -173,8 +178,10 @@ public class Station {
                 }
             } else if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.data == Keyboard.DOWN_ARROW) {
                 for (Envelope env : master) {
-                    env.ramp(5::second, 0.);
+                    env.ramp(15::second, 0.);
                 }
+            } else if (this.kb.event.state == KeyboardEvent.DOWN && this.kb.event.data == Keyboard.SPACE_BAR) {
+                sg.reverse();
             }
 
             // Check if repairing station
@@ -240,14 +247,14 @@ SndBuf buf2;
 
 if (stationId == 1 || stationId == 3) {
     buf2.read(me.dir() + "../assets/SciFiWorkshop_S08SF.1719.wav");
-} else if (stationId == 2 || stationId == 4) {
-    buf2.read(me.dir() + "../assets/Stations/StationSound-1.wav");
-} else if (stationId == 5) {
+} else if (stationId == 2) {
     buf2.read(me.dir() + "../assets/Stations/StationSound-5.wav");
+    0.5 => buf2.gain;
+} else if (stationId == 4) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-6.wav");
+} else if (stationId == 5) {
+    buf2.read(me.dir() + "../assets/Stations/StationSound-1.wav");
 }
-// } else if (stationId == 5) {
-//     buf2.read(me.dir() + "../assets/Stations/StationSound-3.wav");
-// }
 
 1 => buf1.loop;
 1 => buf2.loop;
@@ -295,7 +302,7 @@ spork ~ station.oscListen(Events.damageStation);
 
 fun void warpHandler() {
     while (true) {
-        if (!testRun) {
+        if (!localRun) {
             Events.stationFadeOut => now;
         } else {
             gt.buttonPress => now;
@@ -308,11 +315,6 @@ fun void warpHandler() {
         }
     }
 } spork ~ warpHandler();
-
-
-// Warp + Blackhole objects
-ShepardGenerator sg(gt);
-BlackholeBells bells(gt);
 
 
 fun void shepardHandler() {
@@ -416,7 +418,7 @@ fun void fadeBack(Envelope master[]) {
 
 while (true) {
     // Wait for state transition
-    if (!testRun) {
+    if (!localRun) {
         Events.stateChange => now;
     } else {
         gt.buttonPress => now;

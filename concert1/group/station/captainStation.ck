@@ -20,6 +20,11 @@ OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardRev
 CaptainState.NONE => int state;
 Envelope masterGain => dac;
 
+// Warp + Blackhole objects
+ShepardGenerator sg(gt);
+BlackholeBells bells(gt);
+
+
 
 SndBuf phone(me.dir() + "../assets/phone.wav") => Gain phoneGain => Delay phoneDelay => masterGain;
 phone.loop(true);
@@ -142,6 +147,10 @@ fun void kbHandler() {
                 <<< "Sending OSC:", stationId >>>;
                 sender.send("/damage", stationId);
             }
+
+            if (kb.event.data == Keyboard.SPACE_BAR) {
+                sg.reverse();
+            }
         }
     }
 } spork ~ kbHandler();
@@ -156,8 +165,8 @@ fun void gtHandler() {
         // z axis
         if (gt.axis[2] >= zThreshold && !walkieTalkie) {
             true => walkieTalkie;
-            spork ~ Snd.play(me.dir() + "../assets/start-walkie-talkie.wav", 1., masterGain) @=> startWTShred;
-            spork ~ Snd.loop(me.dir() + "../assets/walkie-talkie.wav", 0.5, masterGain) @=> loopWTShred;
+            spork ~ Snd.play(me.dir() + "../assets/start-walkie-talkie.wav", 0.5, masterGain) @=> startWTShred;
+            spork ~ Snd.loop(me.dir() + "../assets/walkie-talkie.wav", 0.25, masterGain) @=> loopWTShred;
         } else if (gt.axis[2] < zThreshold && walkieTalkie) {
             false => walkieTalkie;
             if (startWTShred != null) startWTShred.exit();
@@ -171,9 +180,9 @@ fun void gtHandler() {
 fun void stateHandler() {
     while (true) {
         if (state == CaptainState.LEFT) {
-            Math.map2(gt.axis[0], leftThreshold, -1, 0, 1) => phoneGain.gain;
+            Math.map2(gt.axis[0], leftThreshold, -1, 0, 0.3) => phoneGain.gain;
         } else if (state == CaptainState.RIGHT) {
-            Math.map2(gt.axis[0], rightThreshold, 1, 0, 3) => radioGain.gain;
+            Math.map2(gt.axis[0], rightThreshold, 1, 0, 1) => radioGain.gain;
         }
 
         10::ms => now;
@@ -229,9 +238,7 @@ fun void fadeBack() {
     // we can also quit the handler shred thus fix the volumes
     // if (stateHandlerShred != null) stateHandlerShred.exit();
 
-    // 1 => phoneGain.gain;
-    // 3 => radioGain.gain;
-    
+
     // reverse playbacks
     phone.samples() => phone.pos;
     -1. => phone.rate;
@@ -265,12 +272,6 @@ fun void fadeBack() {
     // phonePS.out().gain(0.1);
     // phonePS.out() => masterGain;
 }
-
-
-
-// Warp + Blackhole objects
-ShepardGenerator sg(gt);
-BlackholeBells bells(gt);
 
 
 fun void shepardHandler() {

@@ -19,6 +19,7 @@ public class Keyboard {
     KeyboardEvent event;
 
     // Static variables
+    44 => static int SPACE_BAR;
     82 => static int UP_ARROW;
     81 => static int DOWN_ARROW;
 

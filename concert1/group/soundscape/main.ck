@@ -222,7 +222,8 @@ fun void axesHandler() {
 
         // both handles up => sustain mode
         if (gt.axis[2] > 0.45 && gt.axis[5] > 0.45) {
-            T => chordTime;
+            30::ms => chordTime;
+            
         } else {
             bpm.bar => chordTime;
         }

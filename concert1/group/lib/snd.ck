@@ -3,14 +3,20 @@ public class Snd {
         play(path, 1.0);
     }
     fun static void play(string path, float gain) {
-        SndBuf buf(path) => dac;
-        buf.gain(gain);
-        buf.length() => now;
+        play(path, gain, dac);
     }
     fun static void play(string path, float gain, UGen out) {
         SndBuf buf(path) => out;
         buf.gain(gain);
         buf.length() => now;   
+    }
+    
+    fun static void playBC(string path, float gain, UGen out, int bits, int downsample) {
+        SndBuf buf(path) => Bitcrusher bc => out;
+        bc.bits(bits);
+        bc.downsample(downsample);
+        buf.gain(gain);
+        buf.length() => now;
     }
 
     fun static void loop(string path) {

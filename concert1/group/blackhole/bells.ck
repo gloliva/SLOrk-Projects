@@ -51,6 +51,7 @@ public class BlackholeBells {
             mixer[i] => rev[i] => envs[i] => lim[i] => dac.chan(i);
 
             // Set envs
+            0.6 => mixer[i].gain;
             0.5 => envs[i].gain;
             0. => envs[i].value;
 
@@ -61,7 +62,7 @@ public class BlackholeBells {
         // Handle delay
         bell => del => rev; // cool echo
         del => del;
-        0.6 => del.gain;
+        0.4 => del.gain;
         17*0.2::second => del.max => del.delay;
 
 
@@ -96,7 +97,7 @@ public class BlackholeBells {
             if (gt.axis[5] < gt.deadzone) {
                 0. => del.gain;
             } else {
-                Math.clampf(Std.scalef(gt.axis[5], gt.deadzone, 1., 0.5, 1.), 0., 1.) => del.gain;
+                Math.clampf(Std.scalef(gt.axis[5], gt.deadzone, 1., 0.1, 0.5), 0., 1.) => del.gain;
             }
 
             10::ms => now;
