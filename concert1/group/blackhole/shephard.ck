@@ -135,7 +135,7 @@ public class ShepardGenerator {
             if (gt.axis[5] < gt.deadzone) {
                 0. => mix;
             } else {
-                Math.clampf(Std.scalef(gt.axis[5], gt.deadzone, 0.5, 0., 1.), 0., 1.) => mix;
+                Math.clampf(Std.scalef(gt.axis[5], gt.deadzone, 0.5, 0., 3.), 0., 3.) => mix;
             }
 
             this.chorus(freq, depth, mix);
@@ -146,7 +146,7 @@ public class ShepardGenerator {
 
     fun void stopSound() {
         for (Envelope env : this.envs) {
-            env.ramp(50::ms, 0.);
+            env.ramp(5::ms, 0.);
         }
 
         100::ms => now;

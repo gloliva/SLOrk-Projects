@@ -106,7 +106,8 @@ public class BlackholeBells {
     }
 
     fun void run() {
-        2::second => now;
+        // Length of silence
+        4::second => now;
 
         <<< "Inside Bells, turning sound ON" >>>;
         for (Envelope env : envs) {

@@ -1,10 +1,4 @@
 ////// SPACE: STARDUST → BLACKHOLE //////
-
-int localRun;
-if (me.args()) {
-    Std.atoi(me.arg(0)) => localRun;
-}
-
 @import {"../blackhole/shephard.ck", "../blackhole/bells.ck"}
 @import {"../lib/gametrak.ck", "../lib/keyboard.ck", "../lib/osc.ck"}
 @import {"../lib/global.ck", "../lib/state.ck", "../lib/util.ck", "../lib/snd.ck"}
@@ -20,8 +14,11 @@ OscReceiver receiver(Events.damageStation, Events.stateChange, Events.shepardRev
 
 false => int thrusterEnabled;
 
-Std.atoi(me.arg(0)) => int sound;
-Std.atoi(me.arg(1)) => int testRun;
+5 => int sound;
+int localRun;
+if (me.args()) {
+    Std.atoi(me.arg(0)) => localRun;
+}
 
 @(0.0, 0.0) => vec2 sound1Gain;
 @(0.0, 0.0) => vec2 sound2Gain;
@@ -375,17 +372,39 @@ MODE_STARDUST => int mode;
     "approaching_warp_speed_9point99.wav"
 ] @=> string WARP_AUDIO[];
 
-28 => int numBits;
-1 => int downsampleFactor;
+[28, 28, 20, 16, 16] @=> int bcBits[];
+[1., 2., 4., 4., 4.] @=> float bcDownsampleFactor[];
+[1., 0.9, 0.7, 0.6, 1.0] @=> float bcGain[];
+int bcIdx;
+Bitcrusher bc;
 
 fun void playWarpCue(string filename, int warp_stage) {
-    if (numBits >= 3)
-        numBits - 4 => numBits;
+    bcBits[bcIdx] => int numBits;
+    bcDownsampleFactor[bcIdx] => float downsampleFactor;
+    bcGain[bcIdx] => float gain;
+    bcIdx++;
 
-    if (downsampleFactor <= 60)
-        downsampleFactor + 2 => downsampleFactor;
+    if (bcIdx >= WARP_AUDIO.size()) {
+        spork ~ modulateBitCrush(me.dir() + "../assets/" + filename, numBits, downsampleFactor);
+    }
 
-    Snd.playBC(me.dir() + "../assets/" + filename, 1.0, dac, numBits, downsampleFactor);
+    Snd.playBC(me.dir() + "../assets/" + filename, gain, dac, bc, numBits, downsampleFactor$int);
+}
+
+fun void modulateBitCrush(string path, int numBits, float downsampleFactor) {
+    SndBuf buf(path);
+    now + buf.length() => time audioLength;
+    1. => float bcGain;
+    while (now < audioLength) {
+        bc.bits(numBits);
+        bc.gain(bcGain);
+        bc.downsample(downsampleFactor$int);
+        1::second => now;
+        1 -=> numBits;
+        0.5 +=> downsampleFactor;
+        // 0.25 -=> bcGain;
+    }
+
 }
 
 fun void engineUpdate() {
@@ -671,12 +690,38 @@ fun void warpDecelDriver() {
     approachDriver();
 }
 
+fun void camRotation() {
+    0.0005 => float rotAmt;
+
+    while (mode == MODE_STARDUST && !thrusterEnabled) {
+        rotAmt => cam.rotateZ;
+        GG.nextFrame() => now;
+    }
+
+    while (rotAmt >= 0.) {
+        0.000001 -=> rotAmt;
+        rotAmt => cam.rotateZ;
+        GG.nextFrame() => now;
+    }
+} spork ~ camRotation();
+
+fun void emergencyStateChange() {
+    while (true) {
+
+        if (GWindow.key(GWindow.KEY_LEFTSHIFT) && GWindow.keyDown(GWindow.KEY_E)) {
+            Events.stateChange.broadcast();
+        }
+
+        GG.nextFrame() => now;
+    }
+} spork ~ emergencyStateChange();
+
 fun void buttonWatch() {
     while (true) {
         if (localRun) {
             gt.buttonPress => now;
         }
-        
+
         gt.buttonPress => now;
         if (mode == MODE_STARDUST) {
             if (warp_active == 1) {
@@ -700,7 +745,7 @@ fun void buttonWatch() {
 fun void stationRunner() {
     while (true) {
         // Wait for state transition
-        if (!testRun) {
+        if (!localRun) {
             Events.stateChange => now;
         } else {
             gt.buttonPress => now;
@@ -714,13 +759,13 @@ fun void stationRunner() {
             // Turn on station sounds
             MasterGain.spaceship.ramp(5::second, 1.);
             masterGain.ramp(5::second, 1.0);
-            
+
             // enable gametrak thrusters
             true => thrusterEnabled;
         } else if (stationState.currState == stationState.WARP && !stationState.hold) {
             // Turn off station sounds
-            MasterGain.spaceship.ramp(5::second, 0.);
-            masterGain.ramp(5::second, 0.0);
+            MasterGain.spaceship.ramp(10::second, 0.);
+            masterGain.ramp(10::second, 0.0);
 
             // Send Shepard reversal OSC message
             spork ~ sendStateChange("/shepard/reverse");
