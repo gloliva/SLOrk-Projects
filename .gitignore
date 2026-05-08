@@ -4,6 +4,9 @@ scratch/
 local/
 test/
 
+# Ableton files
+ableton/
+
 # Ignore large audio files
 assets/
 
