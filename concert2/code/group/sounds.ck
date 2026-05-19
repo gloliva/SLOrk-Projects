@@ -1,15 +1,15 @@
 public class Wind {
-        Envelope L;
-        Envelope R;
+    Envelope L;
+    Envelope R;
 
-        CNoise nL("white") => LPF filterL => Envelope noiseEnvL => L;
-        CNoise nR("pink") => LPF filterR => Envelope noiseEnvR => R;
+    CNoise nL("white") => LPF filterL => Envelope noiseEnvL => L;
+    CNoise nR("pink") => LPF filterR => Envelope noiseEnvR => R;
 
-        SinOsc sL(1000.) => Envelope sinEnvL => L;
-        SinOsc sR(1010.) => Envelope sinEnvR => R;
+    SinOsc sL(1000.) => Envelope sinEnvL => L;
+    SinOsc sR(1010.) => Envelope sinEnvR => R;
 
-        SinOsc bass(40.) => Envelope bassEnv => L;
-        bassEnv => R;
+    SinOsc bass(40.) => Envelope bassEnv => L;
+    bassEnv => R;
 
     fun @construct() {
         0.3 => sL.gain => sR.gain;
@@ -35,44 +35,56 @@ public class Wind {
 }
 
 
-public class Harpie {
-    TriOsc oscL => ABSaturator satL => Bitcrusher bcL => Envelope oscEnvL;
-    TriOsc oscR => ABSaturator satR => Bitcrusher bcR => Envelope oscEnvR;
+public class Pulse {
+    Envelope L;
+    Envelope R;
 
-    NRev revL => Envelope L;
-    NRev revR => Envelope R;
+    SinOsc oscL[3];
+    SinOsc oscR[3];
 
-    oscEnvL => revL;
-    oscEnvR => revR;
+    CNoise n("white");
+    CNoise nL("flip") => LPF filterL => Envelope noiseEnvL => L;
+    CNoise nR("xor") => LPF filterR => Envelope noiseEnvR => R;
 
-    dur sustain;
-    dur silence;
+    n => filterL;
+    n => filterR;
+
+    noiseEnvL => NRev revL => L;
+    noiseEnvR => NRev revR => R;
+
+    dur silenceL;
+    dur silenceR;
 
     fun @construct() {
-        0.2 => revL.mix => revR.mix;
-        0.3 => oscL.gain => oscR.gain;
+        25::ms => this.silenceL => this.silenceR;
+        0.4 => this.n.gain;
+        0.4 => this.nL.gain => this.nR.gain;
+        0.7 => this.noiseEnvL.gain => this.noiseEnvR.gain;
+        0.3 => this.revL.gain => this.revR.gain;
+        0.1 => this.revL.mix => this.revR.mix;
 
-        20 => satL.drive => satR.drive;
-        4 => satL.dcOffset => satR.dcOffset;
-        6 => bcL.bits => bcR.bits;
+        [140., 220., 340.] @=> float freqs[];
+        [0.7, 0.5, 0.5] @=> float gains[];
+        for (int i; i < oscL.size(); i++) {
+            freqs[i] => oscL[i].freq => oscR[i].freq;
+            gains[i] => oscL[i].gain => oscR[i].gain;
+            oscL[i] => noiseEnvL;
+            oscR[i] => noiseEnvR;
+        }
 
-        Math.random2(20, 100)::ms => sustain;
-        Math.random2(20, 100)::ms => silence;
 
-        spork ~ this.run();
+        spork ~ this.runL();
+        spork ~ this.runR();
     }
 
     fun void freq(float xL, float xR) {
-        Std.scalef(xL, -1., 1., 1996, 2026) => oscL.freq;
-        Std.scalef(xR, -1., 1., 1998, 2025) => oscR.freq;
+        Std.scalef(xL, -1., 1., 500., 7000.) => this.filterL.freq;
+        Std.scalef(xR, -1., 1., 500., 7000.) => this.filterR.freq;
     }
 
-    fun void drive(float yL, float yR) {
-        Std.scalef(yL, -1., 1., 20, 100) => satL.drive;
-        Std.scalef(yR, -1., 1., 20, 100) => satR.drive;
-
-        Std.scalef(yL, -1., 1., 100, 20)::ms => sustain;
-        Std.scalef(yR, -1., 1., 100, 20)::ms => silence;
+    fun void width(float yL, float yR) {
+        Std.scalef(yL, -1., 1., 2000, 25)::ms => this.silenceL;
+        Std.scalef(yR, -1., 1., 2000, 25)::ms => this.silenceR;
     }
 
     fun void gain(float zL, float zR) {
@@ -80,25 +92,35 @@ public class Harpie {
         Math.clampf(zR, 0., 1.) => this.R.gain;
     }
 
-    fun void run() {
+    fun void runL() {
         time start;
 
         while (true) {
-            oscEnvL.ramp(5::ms, 1.);
-            oscEnvR.ramp(5::ms, 1.);
+            this.noiseEnvL.ramp(5::ms, 1.);
 
-            // 50::ms => now;
+            50::ms => now;
+
+            this.noiseEnvL.ramp(100::ms, 0.);
+
             now => start;
-            while (now < start + sustain) {
+            while (now < start + this.silenceL) {
                 1::ms => now;
             }
+        }
+    }
 
-            oscEnvL.ramp(5::ms, 0.);
-            oscEnvR.ramp(5::ms, 0.);
+    fun void runR() {
+        time start;
 
-            // 50::ms => now;
+        while (true) {
+            this.noiseEnvR.ramp(5::ms, 1.);
+
+            50::ms => now;
+
+            this.noiseEnvR.ramp(20::ms, 0.);
+
             now => start;
-            while (now < start + silence) {
+            while (now < start + this.silenceR) {
                 1::ms => now;
             }
         }

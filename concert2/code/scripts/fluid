@@ -5,7 +5,8 @@ osascript -e "set Volume 5"
 pushd ~/slork/users/gregg/bing2026
 
 if [ "$1" = "solo" ]; then
-  chuck --ins:4 --outs:22 solo/main.ck
+  chump install Range
+  chuck --adc:5 --dac:5 --in:4 --out:22 solo/main.ck
 elif [ "$1" = "group" ]; then
   chuck -c6 group/main.ck
 else

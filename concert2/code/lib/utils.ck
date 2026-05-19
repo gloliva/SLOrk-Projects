@@ -46,6 +46,10 @@ public class Utils {
     }
 
     fun static void stereoToDac(UGen L, UGen R) {
+        Utils.stereoToDac(L, R, 0);
+    }
+
+    fun static void stereoToDac(UGen L, UGen R, int offset) {
         // If not running on hemi, connect to stereo
         if (dac.channels() <= Globals.NUM_HEMI_CHANS) {
             L => dac.left;
@@ -53,8 +57,9 @@ public class Utils {
         } else {
             // Connect to Hemi's 6 channels
             for (int i; i < Globals.NUM_HEMI_CHANS / 2; i++) {
-                L => dac.chan(i * 2);
-                R => dac.chan((i * 2) + 1);
+                Log.debug("Connecting L chan to index " + (offset + (i * 2)) + " and R chan to index " + (offset + ((i * 2) + 1)));
+                L => dac.chan(offset + (i * 2));
+                R => dac.chan(offset + ((i * 2) + 1));
             }
         }
     }
