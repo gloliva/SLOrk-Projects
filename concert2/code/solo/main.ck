@@ -1,7 +1,9 @@
-@import {"../lib/gametrak.ck", "../lib/keyboard.ck", "../lib/logger.ck", "../lib/utils.ck"}
+@import {"../lib/gametrak.ck", "../lib/keyboard.ck"}
+@import {"../lib/logger.ck", "../lib/osc.ck", "../lib/utils.ck"}
 @import "Range"
 
 
+// Command-line arguments
 int runOnHemi;
 if (me.args()) {
     me.arg(0) => Std.atoi => runOnHemi;
@@ -9,10 +11,10 @@ if (me.args()) {
 Log.debug("Running with hemi? " + runOnHemi);
 Log.debug("Number of dac channels " + dac.channels());
 
+
+// Handle Audio from Eurorack --> Hemi / Audio Interface
 Dyno dyno[Globals.NUM_ES8_INPUTS];
 Gain eurorackAudio[Globals.NUM_ES8_INPUTS];
-
-
 for (int i; i < Globals.NUM_ES8_INPUTS; i++) {
     dyno[i] => eurorackAudio[i];
     dyno[i].limit();
@@ -55,12 +57,29 @@ if (runOnHemi) {
 }
 
 
-// Init Keyboard
-Utils.getKeyboardDeviceId() => int id;
-Keyboard kb(id);
+// State Change Management: Local + OSC
+fun void stateHandler() {
+    // Init keyboard
+    Utils.getKeyboardDeviceId() => int id;
+    Keyboard kb(id);
+
+    // Init OSC
+    OscSender sender;
+    1 => int state;
+
+    while (true) {
+        kb.event => now;
+
+        if (kb.event.state == KeyboardEvent.DOWN && kb.event.data == Keyboard.SPACE_BAR) {
+            Globals.stateChange.broadcast();
+            spork ~ sender.send("/state", state);
+            state++;
+        }
+    }
+} spork ~ stateHandler();
 
 
-// UGens
+// GameTrak --> ES8 UGens
 Envelope mixer[Globals.NUM_ES8_OUTPUTS];
 Range range[GameTrak.NUM_AXES + GameTrak.NUM_BUTTONS];
 
@@ -79,7 +98,6 @@ for (int i; i < gt.outs.size(); i++) {
     gt.outs[i] => range[i];
 }
 
-
 // Set initial ranges
 (-1., 1., -1., 1.) => range[0].range;
 (-1., 1., -1., 1.) => range[1].range;
@@ -95,17 +113,15 @@ Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 5::second, 1.);
 
 (-1., 1., 0., 1.) => range[3].range;
 Utils.map(range, mixer, [@(2, 0), @(0, 1), @(6, 2), @(5, 3), @(3, 4), @(2, 5)]);
-kb.event => now;
-kb.event => now;
+Globals.stateChange => now;
 
 
 // Scene 2
-Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 5::second, 0.);
+Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 0.);
 Utils.ramp(mixer, [2, 8, 9, 10, 11], 5::second, 1.);
 
 (-1., 1., -1., 1.) => range[3].range;
 Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11), @(6, 2)]);
-kb.event => now;
-kb.event => now;
+Globals.stateChange => now;
 
 Utils.ramp(mixer, [2, 8, 9, 10, 11], 5::second, 0.) => now;

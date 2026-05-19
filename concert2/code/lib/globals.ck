@@ -1,5 +1,4 @@
 public class Globals {
-
     16 => static int NUM_ES8_OUTPUTS;
     4 => static int NUM_ES8_INPUTS;
     6 => static int NUM_HEMI_CHANS;

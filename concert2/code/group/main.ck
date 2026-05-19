@@ -73,12 +73,15 @@ fun void scene1() {
 
 // Scene 1
 spork ~ scene1();
+Log.print("Waiting for state change");
 Globals.stateChange => now;
-Utils.ramp([wind.L, wind.R], 20::second, 0.) => now;
+Utils.ramp([wind.L, wind.R], 20::second, 0.);
 
 
 // Scene 2
 Log.print("Scene 2");
 // spork ~ Utils.ramp([pulse.L, pulse.R], [40::second, 10::second, 10::second], [0.1, 0.2, 0.5]);
 Utils.ramp([pulse.L, pulse.R], 5::second, 1.);
-eon => now;
+
+Log.print("Waiting for state change");
+Globals.stateChange => now;
