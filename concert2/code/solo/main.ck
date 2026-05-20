@@ -13,10 +13,10 @@ Log.debug("Number of dac channels " + dac.channels());
 
 
 // Handle Audio from Eurorack --> Hemi / Audio Interface
-Dyno dyno[Globals.NUM_ES8_INPUTS];
-Gain eurorackAudio[Globals.NUM_ES8_INPUTS];
-for (int i; i < Globals.NUM_ES8_INPUTS; i++) {
-    dyno[i] => eurorackAudio[i];
+Dyno dyno[Globals.NUM_ES8_AUDIO_INPUTS];
+Gain eurorackInputs[Globals.NUM_ES8_INPUTS];
+for (int i; i < Globals.NUM_ES8_AUDIO_INPUTS; i++) {
+    dyno[i] => eurorackInputs[i];
     dyno[i].limit();
     5. => dyno[i].gain;
 }
@@ -41,19 +41,23 @@ if (runOnHemi) {
 
     // Connect Audio from Eurorack --> Hemi
     for (int i; i < Globals.NUM_ES8_INPUTS; i++) {
-        0.8 => eurorackAudio[i].gain;
-        adc.chan(i) => eurorackAudio[i];
+        0.8 => eurorackInputs[i].gain;
+        adc.chan(i) => eurorackInputs[i];
     }
 
     Log.print("Connecting Eurorack output to Hemi");
-    Utils.stereoToDac(eurorackAudio[0], eurorackAudio[1], Globals.NUM_ES8_OUTPUTS);
+    Utils.stereoToDac(eurorackInputs[0], eurorackInputs[1], Globals.NUM_ES8_OUTPUTS);
 } else {
     adc.chan(0) => dyno[0];
     adc.chan(1) => dyno[1];
-    eurorackAudio[0] => dac.chan(Globals.NUM_ES8_OUTPUTS);
-    eurorackAudio[1] => dac.chan(Globals.NUM_ES8_OUTPUTS + 1);
+    eurorackInputs[0] => dac.chan(Globals.NUM_ES8_OUTPUTS);
+    eurorackInputs[1] => dac.chan(Globals.NUM_ES8_OUTPUTS + 1);
 
-    0.5 => eurorackAudio[0].gain => eurorackAudio[1].gain;
+    // Handle non-audio inputs
+    adc.chan(2) => eurorackInputs[2];
+    adc.chan(3) => eurorackInputs[3];
+
+    0.5 => eurorackInputs[0].gain => eurorackInputs[1].gain;
 }
 
 
@@ -77,6 +81,11 @@ fun void stateHandler() {
         }
     }
 } spork ~ stateHandler();
+
+
+// Envelope handling for Eurorack inputs
+eurorackInputs[3] => Envelope scene1Env => dac.chan(15);
+Step volume(0.5) => Envelope scene2Env => dac.chan(15);
 
 
 // GameTrak --> ES8 UGens
@@ -108,8 +117,15 @@ for (int i; i < gt.outs.size(); i++) {
 (0., 1., 0., 1.)   => range[6].range;
 
 
+// Initial state
+Log.print("Waiting to start...");
+Globals.stateChange => now;
+
+
 // Scene 1
+Log.print("Scene 1");
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 5::second, 1.);
+scene1Env.ramp(5::second, 1.);
 
 (-1., 1., 0., 1.) => range[3].range;
 Utils.map(range, mixer, [@(2, 0), @(0, 1), @(6, 2), @(5, 3), @(3, 4), @(2, 5)]);
@@ -117,11 +133,35 @@ Globals.stateChange => now;
 
 
 // Scene 2
+Log.print("Scene 2");
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 0.);
-Utils.ramp(mixer, [2, 8, 9, 10, 11], 5::second, 1.);
+Utils.ramp(mixer, [8, 9, 10, 11], 15::second, 1.);
+
+scene1Env.ramp(15::second, 0.);
+scene2Env.ramp(15::second, 1.);
 
 (-1., 1., -1., 1.) => range[3].range;
 Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11), @(6, 2)]);
 Globals.stateChange => now;
 
-Utils.ramp(mixer, [2, 8, 9, 10, 11], 5::second, 0.) => now;
+
+// Scene 3
+// Nothing changes
+Log.print("Scene 3");
+Globals.stateChange => now;
+
+
+// Scene 4
+Log.print("Scene 4");
+(-1., 1., 0., 1.) => range[3].range;
+// Utils.ramp(mixer, [8, 9, 10, 11], 15::second, 0.);
+Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 1.);
+
+scene1Env.ramp(15::second, 1.);
+scene2Env.ramp(15::second, 0.);
+
+Globals.stateChange => now;
+
+
+// End
+Log.print("End of piece");

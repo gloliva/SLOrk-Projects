@@ -199,6 +199,10 @@ spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 5::second);
 spork ~ visuals.transformRight(0.2, 1.5, 0.5, 5::second);
 15::second => now;
 
+spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
+spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
+15::second => now;
+
 
 Log.print("Waiting for state change");
 Globals.stateChange => now;
