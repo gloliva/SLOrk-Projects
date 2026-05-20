@@ -5,10 +5,12 @@ osascript -e "set Volume 5"
 pushd ~/slork/users/gregg/bing2026
 
 if [ "$1" = "solo" ]; then
-  chump install Range
+  chump install Range > /dev/null 2>&1
   chuck --adc:5 --dac:5 --in:4 --out:22 solo/main.ck
 elif [ "$1" = "group" ]; then
   chuck -c6 group/main.ck
+elif [ "$1" = "group-leader" ]; then
+  chuck -c6 group/main.ck:1
 else
   echo "First argument should be either 'solo' or 'group'"
 fi

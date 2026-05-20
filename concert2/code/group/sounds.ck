@@ -83,8 +83,8 @@ public class Pulse {
     }
 
     fun void width(float yL, float yR) {
-        Std.scalef(yL, -1., 1., 2000, 25)::ms => this.silenceL;
-        Std.scalef(yR, -1., 1., 2000, 25)::ms => this.silenceR;
+        Std.scalef(yL, -1., 1., 5000, 25)::ms => this.silenceL;
+        Std.scalef(yR, -1., 1., 5000, 25)::ms => this.silenceR;
     }
 
     fun void gain(float zL, float zR) {
@@ -98,9 +98,9 @@ public class Pulse {
         while (true) {
             this.noiseEnvL.ramp(5::ms, 1.);
 
-            50::ms => now;
+            10::ms => now;
 
-            this.noiseEnvL.ramp(100::ms, 0.);
+            this.noiseEnvL.ramp(250::ms, 0.);
 
             now => start;
             while (now < start + this.silenceL) {
@@ -115,9 +115,9 @@ public class Pulse {
         while (true) {
             this.noiseEnvR.ramp(5::ms, 1.);
 
-            50::ms => now;
+            10::ms => now;
 
-            this.noiseEnvR.ramp(20::ms, 0.);
+            this.noiseEnvR.ramp(250::ms, 0.);
 
             now => start;
             while (now < start + this.silenceR) {
