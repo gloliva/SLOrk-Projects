@@ -38,8 +38,8 @@ if (!oscSender) {
 Wind wind(performerId);
 Utils.stereoToDac(wind.L, wind.R);
 
-Pulse pulse;
-Utils.stereoToDac(pulse.L, pulse.R);
+Vibe vibe();
+Utils.stereoToDac(vibe.L, vibe.R);
 
 
 // State Change Management: Local + OSC
@@ -98,9 +98,9 @@ fun void gtHandler() {
         (gt.outs[gt.LEFT_Z].next(), gt.outs[gt.RIGHT_Z].next()) => wind.gain;
 
         // pulse
-        (gt.outs[gt.LEFT_X].next(), gt.outs[gt.RIGHT_X].next()) => pulse.freq;
-        (gt.outs[gt.LEFT_Y].next(), gt.outs[gt.RIGHT_Y].next()) => pulse.width;
-        (gt.outs[gt.LEFT_Z].next(), gt.outs[gt.RIGHT_Z].next()) => pulse.gain;
+        (gt.outs[gt.LEFT_X].next(), gt.outs[gt.RIGHT_X].next()) => vibe.freq;
+        (gt.outs[gt.LEFT_Y].next(), gt.outs[gt.RIGHT_Y].next()) => vibe.swell;
+        (gt.outs[gt.LEFT_Z].next(), gt.outs[gt.RIGHT_Z].next()) => vibe.trigger;
 
         10::ms => now;
     }
@@ -221,12 +221,32 @@ Globals.stateChange => now;
 
 // Scene 3
 Log.print("Scene 3");
-// spork ~ Utils.ramp([pulse.L, pulse.R], [40::second, 10::second, 10::second], [0.1, 0.2, 0.5]);
-Utils.ramp([pulse.L, pulse.R], 15::second, 1.);
+"Scene 3 - Wait" => visuals.updateText;
+Utils.ramp([vibe.L, vibe.R], 5::second, 1.);
 
-spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
-spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
-20::second => now;
+
+// Middle performer
+if (performerId == 3) {
+    "Scene 3 - Performing" => visuals.updateText;
+    spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 2::second);
+    spork ~ visuals.transformRight(0.2, -1.5, 0.5, 2::second);
+    5::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 2::second);
+    spork ~ visuals.transformRight(0.2, 1.5, 0.5, 2::second);
+    2::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 0., -15., 2::second);
+    spork ~ visuals.transformRight(0.2, 0., -15., 2::second);
+    3::second => now;
+
+    // Wait for response
+    10::second => now;
+
+} else {
+    "Scene 3 - Wait" => visuals.updateText;
+    20::second => now;
+}
 
 spork ~ visuals.transformLeft(-1.7, 0., 0.5, 5::second);
 spork ~ visuals.transformRight(-1.3, 0., 0.5, 5::second);
@@ -260,7 +280,7 @@ Globals.stateChange => now;
 
 // Scene 4
 Log.print("Scene 4");
-Utils.ramp([pulse.L, pulse.R], 10::second, 0.);
+Utils.ramp([vibe.L, vibe.R], 10::second, 0.);
 
 Log.print("Waiting for state change");
 Globals.stateChange => now;

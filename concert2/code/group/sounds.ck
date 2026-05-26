@@ -53,94 +53,93 @@ public class Wind {
 }
 
 
-public class Pulse {
+public class Vibe {
     Envelope L;
     Envelope R;
 
-    SinOsc oscL[3];
-    SinOsc oscR[3];
+    SawOsc oscL => Chorus chL(10., 0.5, 0.6) => ADSR envL(100::ms, 250::ms, 0.7, 2::second) => L;
+    SawOsc oscR => Chorus chR(50., 0.3, 0.5) => ADSR envR(100::ms, 250::ms, 0.7, 2::second) => R;
 
-    CNoise n("white");
-    CNoise nL("flip") => LPF filterL => Envelope noiseEnvL => L;
-    CNoise nR("xor") => HPF filterR => Envelope noiseEnvR => R;
+    envL => NRev revL => L;
+    envR => NRev revR => R;
 
-    n => filterL;
-    n => filterR;
+    PulseOsc pulseL => chL;
+    PulseOsc pulseR => chR;
 
-    noiseEnvL => NRev revL => L;
-    noiseEnvR => NRev revR => R;
+    envL => DelayL delL(1::second, 8::second) => L;
+    envR => DelayL delR(1::second, 8::second) => R;
 
-    dur silenceL;
-    dur silenceR;
+    delL => delR;
+    delR => delL;
+
+    int triggerL;
+    int triggerR;
 
     fun @construct() {
-        25::ms => this.silenceL => this.silenceR;
-        0.4 => this.n.gain;
-        0.4 => this.nL.gain => this.nR.gain;
-        0.7 => this.noiseEnvL.gain => this.noiseEnvR.gain;
-        0.3 => this.revL.gain => this.revR.gain;
-        0.1 => this.revL.mix => this.revR.mix;
 
-        [140., 220., 340.] @=> float freqs[];
-        [0.7, 0.5, 0.5] @=> float gains[];
-        for (int i; i < oscL.size(); i++) {
-            freqs[i] => oscL[i].freq => oscR[i].freq;
-            gains[i] => oscL[i].gain => oscR[i].gain;
-            oscL[i] => noiseEnvL;
-            oscR[i] => noiseEnvR;
+        10::ms => chL.baseDelay => chR.baseDelay;
+        0.5 => delL.gain;
+        0.5 => delR.gain;
+
+        0.5 => revL.mix => revR.mix;
+        0.3 => revL.gain => revR.gain;
+
+        spork ~ this.run();
+    }
+
+    fun void run() {
+        while (true) {
+            1. => oscL.gain;
+            1. => oscR.gain;
+            1. => pulseL.gain;
+            1. => pulseR.gain;
+            20::ms => now;
+
+            0. => oscL.gain;
+            0. => oscR.gain;
+            0. => pulseL.gain;
+            0. => pulseR.gain;
+            20::ms => now;
         }
-
-
-        spork ~ this.runL();
-        spork ~ this.runR();
     }
 
     fun void freq(float xL, float xR) {
-        Std.scalef(xL, -1., 1., 500., 2000.) => this.filterL.freq;
-        Std.scalef(xR, -1., 1., 500., 7000.) => this.filterR.freq;
+        Std.scalef(xL, -1., 1., 100., 5000.) => this.oscL.freq;
+        Std.scalef(xR, -1., 1., 150., 2000.) => this.oscR.freq;
+
+        this.oscL.freq() * 0.96 => this.pulseL.freq;
+        this.oscR.freq() * 1.03 => this.pulseR.freq;
+
+        Std.scalef(xL, -1., 1., 0.001, 5.) => this.chL.modFreq;
+        Std.scalef(xR, -1., 1., 0.1, 2.) => this.chR.modFreq;
     }
 
-    fun void width(float yL, float yR) {
-        Std.scalef(yL, -1., 1., 5000, 25)::ms => this.silenceL;
-        Std.scalef(yR, -1., 1., 5000, 25)::ms => this.silenceR;
+    fun void swell(float yL, float yR) {
+        Std.scalef(yL, -1., 1., 1., 0.2) => this.chL.modDepth;
+        Std.scalef(yR, -1., 1., 0.1, 2.) => this.chR.modDepth;
     }
 
-    fun void gain(float zL, float zR) {
-        Math.clampf(zL, 0., 1.) => this.L.gain;
-        Math.clampf(zR, 0., 1.) => this.R.gain;
-    }
+    fun void trigger(float zL, float zR) {
+        Std.scalef(zL, 0., 1., 0.5, 2.) => this.envL.gain;
+        Std.scalef(zR, 0., 1., 0.5, 2.) => this.envR.gain;
 
-    fun void runL() {
-        time start;
 
-        while (true) {
-            this.noiseEnvL.ramp(5::ms, 1.);
-
-            10::ms => now;
-
-            this.noiseEnvL.ramp(250::ms, 0.);
-
-            now => start;
-            while (now < start + this.silenceL) {
-                1::ms => now;
-            }
+        // Left trigger
+        if (zL > 0.4 && !triggerL) {
+            envL.keyOn(1);
+            1 => triggerL;
+        } else if (zL <= 0.4 && triggerL) {
+            envL.keyOff(1);
+            0 => triggerL;
         }
-    }
 
-    fun void runR() {
-        time start;
-
-        while (true) {
-            this.noiseEnvR.ramp(5::ms, 1.);
-
-            10::ms => now;
-
-            this.noiseEnvR.ramp(250::ms, 0.);
-
-            now => start;
-            while (now < start + this.silenceR) {
-                1::ms => now;
-            }
+        // right trigger
+        if (zR > 0.4 && !triggerR) {
+            envR.keyOn(1);
+            1 => triggerR;
+        } else if (zR <= 0.4 && triggerR) {
+            envR.keyOff(1);
+            0 => triggerR;
         }
     }
 }
