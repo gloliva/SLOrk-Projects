@@ -44,7 +44,7 @@ public class Pulse {
 
     CNoise n("white");
     CNoise nL("flip") => LPF filterL => Envelope noiseEnvL => L;
-    CNoise nR("xor") => LPF filterR => Envelope noiseEnvR => R;
+    CNoise nR("xor") => HPF filterR => Envelope noiseEnvR => R;
 
     n => filterL;
     n => filterR;
@@ -78,7 +78,7 @@ public class Pulse {
     }
 
     fun void freq(float xL, float xR) {
-        Std.scalef(xL, -1., 1., 500., 7000.) => this.filterL.freq;
+        Std.scalef(xL, -1., 1., 500., 2000.) => this.filterL.freq;
         Std.scalef(xR, -1., 1., 500., 7000.) => this.filterR.freq;
     }
 

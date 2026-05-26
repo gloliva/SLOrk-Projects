@@ -1,12 +1,6 @@
 @import "../lib/globals.ck"
 
 
-// Setup scene
-8. => GG.scene().camera().posZ;
-GG.scene().camera().orthographic();
-Color.BLACK => GG.scene().backgroundColor;
-
-
 public class Visuals {
     GText sceneInfo;
     GText leftInfo;
@@ -19,6 +13,10 @@ public class Visuals {
     Envelope rightMovement[3];
 
     fun @construct() {
+        // Setup scene
+        GWindow.fullscreen();
+        Color.BLACK => GG.scene().backgroundColor;
+
         "Waiting to start" => sceneInfo.text;
         0.25 => sceneInfo.size;
         -1.8 => sceneInfo.posY;

@@ -85,7 +85,7 @@ fun void stateHandler() {
 
 // Envelope handling for Eurorack inputs
 eurorackInputs[3] => Envelope scene1Env => dac.chan(15);
-Step volume(0.5) => Envelope scene2Env => dac.chan(15);
+Step volume(0.) => Envelope scene2Env => dac.chan(15);
 
 
 // GameTrak --> ES8 UGens
@@ -106,6 +106,15 @@ Log.print("GameTrak connected");
 for (int i; i < gt.outs.size(); i++) {
     gt.outs[i] => range[i];
 }
+
+
+fun void gtHandler() {
+    while (true) {
+        gt.outs[GameTrak.LEFT_Z].next() => volume.next;
+        10::ms => now;
+    }
+} spork ~ gtHandler();
+
 
 // Set initial ranges
 (-1., 1., -1., 1.) => range[0].range;
@@ -154,7 +163,6 @@ Globals.stateChange => now;
 // Scene 4
 Log.print("Scene 4");
 (-1., 1., 0., 1.) => range[3].range;
-// Utils.ramp(mixer, [8, 9, 10, 11], 15::second, 0.);
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 1.);
 
 scene1Env.ramp(15::second, 1.);

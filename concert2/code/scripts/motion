@@ -1,12 +1,27 @@
 #!/bin/bash
 #
+networksetup -setairportpower en0 off
+osascript -e "set volume alert volume 0"
 osascript -e "set Volume 5"
+
+# 1. Define the command or function to run on Ctrl+C
+cleanup() {
+    echo -e "\nCtrl+C detected! Performing cleanup..."
+    SwitchAudioSource -s "MCHStreamer I2S TosLink"
+    networksetup -setairportpower en0 on
+    exit 1
+}
+
+# 2. Register the trap for the SIGINT (Ctrl+C) signal
+trap cleanup SIGINT
+
 
 pushd ~/slork/users/gregg/bing2026
 
 if [ "$1" = "solo" ]; then
   chump install Range > /dev/null 2>&1
-  chuck --adc:5 --dac:5 --in:4 --out:22 solo/main.ck
+  SwitchAudioSource -s "GreggSlorkDevice"
+  chuck --adc:7 --dac:7 --in:4 --out:22 solo/main.ck:1
 elif [ "$1" = "group" ]; then
   chuck -c6 group/main.ck
 elif [ "$1" = "group-leader" ]; then
@@ -14,4 +29,15 @@ elif [ "$1" = "group-leader" ]; then
 else
   echo "First argument should be either 'solo' or 'group'"
 fi
+
+
+if [ $? -eq 0 ]; then
+    cleanup
+    exit 0;
+elif [ $? -eq 139 ]; then
+    echo "The program crashed with a segmentation fault!"
+    cleanup
+    exit 1
+fi
+
 popd

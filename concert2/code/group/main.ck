@@ -186,22 +186,24 @@ Utils.ramp([pulse.L, pulse.R], 15::second, 1.);
 
 spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
 spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
-15::second => now;
+20::second => now;
 
 spork ~ visuals.transformLeft(-1.7, 0., 0.5, 5::second);
 spork ~ visuals.transformRight(-1.3, 0., 0.5, 5::second);
-15::second => now;
+20::second => now;
 
 spork ~ visuals.transformRight(1.7, 0., 0.5, 5::second);
-15::second => now;
+20::second => now;
+
+spork ~ visuals.transformRight(0.2, 1.5, 0.5, 5::second);
+20::second => now;
 
 spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 5::second);
-spork ~ visuals.transformRight(0.2, 1.5, 0.5, 5::second);
-15::second => now;
+20::second => now;
 
 spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
 spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
-15::second => now;
+20::second => now;
 
 
 Log.print("Waiting for state change");
