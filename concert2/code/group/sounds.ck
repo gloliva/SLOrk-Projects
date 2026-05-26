@@ -8,10 +8,19 @@ public class Wind {
     SinOsc sL(1000.) => Envelope sinEnvL => L;
     SinOsc sR(1010.) => Envelope sinEnvR => R;
 
-    SinOsc bass(40.) => Envelope bassEnv => L;
-    bassEnv => R;
+    SinOsc fmL(1.) => Envelope fmEnvL => blackhole;
+    SinOsc fmR(1.) => Envelope fmEnvR => blackhole;
 
-    fun @construct() {
+    float depthL;
+    float depthR;
+
+    int performerId;
+    float baseFreq;
+
+    fun @construct(int id) {
+        id => this.performerId;
+        800 + (100 * id) => this.baseFreq;
+
         0.3 => sL.gain => sR.gain;
     }
 
@@ -19,13 +28,22 @@ public class Wind {
         Std.scalef(xL, -1., 1., 400., 1000.) => this.filterL.freq;
         Std.scalef(xR, -1., 1., 3000., 2000.) => this.filterR.freq;
 
-        Std.scalef(xL, -1., 1., 980, 1020) => sL.freq;
-        Std.scalef(xR, -1., 1., 970, 1030) => sR.freq;
+        // FM vals
+        Std.scalef(xL, -1., 1., 40., 100.) => this.fmL.freq;
+        Std.scalef(xR, -1., 1., 40., 100.) => this.fmR.freq;
+        fmEnvL.value() * this.depthL => float fmLVal;
+        fmEnvR.value() * this.depthR => float fmRVal;
+
+        Std.scalef(xL, -1., 1., this.baseFreq - 20 + fmLVal, this.baseFreq + 20 + fmLVal) => sL.freq;
+        Std.scalef(xR, -1., 1., this.baseFreq - 30 + fmRVal, this.baseFreq + 30 + fmRVal) => sR.freq;
     }
 
     fun void swell(float yL, float yR) {
         Math.clampf(Std.scalef(yL, -1., 1., 0.3, 1.5), 0., 1.5) => this.nL.gain;
         Math.clampf(Std.scalef(yR, -1., 1., 0.3, 1.5), 0., 1.5) => this.nR.gain;
+
+        Std.scalef(yL, -1., 1., -10., 100.) => this.depthL;
+        Std.scalef(yR, -1., 1., -20, 120) => this.depthR;
     }
 
     fun void gain(float zL, float zR) {

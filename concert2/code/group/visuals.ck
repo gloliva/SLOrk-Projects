@@ -3,8 +3,10 @@
 
 public class Visuals {
     GText sceneInfo;
+    GText countdownInfo;
     GText leftInfo;
     GText rightInfo;
+
 
     GSphere left;
     GSphere right;
@@ -14,7 +16,7 @@ public class Visuals {
 
     fun @construct() {
         // Setup scene
-        GWindow.fullscreen();
+        // GWindow.fullscreen();
         Color.BLACK => GG.scene().backgroundColor;
 
         "Waiting to start" => sceneInfo.text;
@@ -23,18 +25,21 @@ public class Visuals {
         @(5., 5., 5.) => sceneInfo.color;
         sceneInfo --> GG.scene();
 
+        0.3 => countdownInfo.size;
+        @(5., 5., 5.) => countdownInfo.color;
+
         "Left" => leftInfo.text;
         Color.RED => leftInfo.color;
         0.2 => leftInfo.size;
-        -2. => leftInfo.posX;
-        -1.8 => leftInfo.posY;
+        -2.2 => leftInfo.posX;
+        -1.4 => leftInfo.posY;
         leftInfo --> GG.scene();
 
         "Right" => rightInfo.text;
         Color.GREEN => rightInfo.color;
         0.2 => rightInfo.size;
-        2. => rightInfo.posX;
-        -1.8 => rightInfo.posY;
+        2.2 => rightInfo.posX;
+        -1.4 => rightInfo.posY;
         rightInfo --> GG.scene();
 
         @(0.3, 0.3, 0.3) => left.sca;
@@ -50,7 +55,7 @@ public class Visuals {
             rightMovement[i] => blackhole;
         }
 
-        spork ~ this.stateHandler();
+        // spork ~ this.stateHandler();
         spork ~ this.run();
     }
 
@@ -68,6 +73,25 @@ public class Visuals {
         "Scene 4" => sceneInfo.text;
     }
 
+    fun void updateText(string text) {
+        text => this.sceneInfo.text;
+    }
+
+    fun void countdown(int numSeconds) {
+        numSeconds => int currSeconds;
+        countdownInfo --> GG.scene();
+
+        repeat(numSeconds) {
+            currSeconds => Std.itoa => countdownInfo.text;
+            1::second => now;
+            currSeconds--;
+        }
+
+        "Now!" => countdownInfo.text;
+        1::second => now;
+        countdownInfo --< GG.scene();
+    }
+
     fun void run() {
         // Main loop
         while (true) {
@@ -83,19 +107,19 @@ public class Visuals {
     }
 
     fun void updateLeft(float x, float y, float z) {
-        @(x, y, z) => left.pos;
-
         x => leftMovement[0].value;
         y => leftMovement[1].value;
         z => leftMovement[2].value;
+
+        @(x, y, z) => left.pos;
     }
 
     fun void updateRight(float x, float y, float z) {
-        @(x, y, z) => right.pos;
-
         x => rightMovement[0].value;
         y => rightMovement[1].value;
         z => rightMovement[2].value;
+
+        @(x, y, z) => right.pos;
     }
 
     fun void transformLeft(float x, float y, float z, dur d) {

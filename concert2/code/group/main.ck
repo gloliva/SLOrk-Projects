@@ -4,9 +4,16 @@
 
 
 // Command-line arguments
+int performerId;
 int oscSender;
 if (me.args()) {
-    me.arg(0) => Std.atoi => oscSender;
+    me.arg(0) => Std.atoi => performerId;
+    me.arg(1) => Std.atoi => oscSender;
+}
+
+if (performerId < 1 || performerId > 5) {
+    Log.error("Performer ID set to incorrect value: " + performerId);
+    me.exit();
 }
 
 
@@ -21,12 +28,14 @@ Visuals visuals;
 
 
 // Init OSC Receiver
-OscReceiver receiver(Globals.stateChange);
-spork ~ receiver.listen();
+if (!oscSender) {
+    OscReceiver receiver(Globals.stateChange);
+    spork ~ receiver.listen();
+}
 
 
 // Init sounds
-Wind wind;
+Wind wind(performerId);
 Utils.stereoToDac(wind.L, wind.R);
 
 Pulse pulse;
@@ -68,6 +77,7 @@ fun void noSoloStateHandler() {
 
     while (true) {
         gt.buttonPress => now;
+        Globals.stateChange.broadcast();
         spork ~ sender.send("/state", state);
         state++;
     }
@@ -98,8 +108,8 @@ fun void gtHandler() {
 
 
 // Initial state
-visuals.updateLeft(-0.2, 0., -5);
-visuals.updateRight(0.2, 0., -5);
+visuals.updateLeft(-0.2, 0., -15);
+visuals.updateRight(0.2, 0., -15);
 Log.debug("Waiting to start...");
 Globals.stateChange => now;
 
@@ -108,8 +118,12 @@ State scene1;
 1 => scene1.running;
 
 
-fun void scene1Sounds(State sceneState) {
+fun void scene1Sounds(State sceneState, int performerId) {
     Log.debug("Start Scene 1");
+
+    // Wait depending on performer id
+    ((performerId - 1) * 10)::second => now;
+
     Utils.ramp([wind.L, wind.R], 5::second, 1.);
     Utils.ramp([wind.noiseEnvL, wind.noiseEnvR], 5::second, 1.);
     20::second => now;
@@ -118,17 +132,18 @@ fun void scene1Sounds(State sceneState) {
     spork ~ Utils.ramp([wind.sinEnvL, wind.sinEnvR], [20::second, 20::second], [0.1, 1.]);
     40::second => now;
 
-    Log.debug("Ramp up bass, ramp down Sin");
-    Utils.ramp([wind.bassEnv], 30::second, 1.);
-    Utils.ramp([wind.sinEnvL, wind.sinEnvR], 40::second, 0.) => now;
+    Log.debug("Ramp down noise");
+    Utils.ramp([wind.noiseEnvL, wind.noiseEnvR], 30::second, 0.) => now;
 
     // Stop visuals
-    0 => scene1.running;
-    spork ~ visuals.transformLeft(-0.2, 0., 0.5, 5::second);
-    spork ~ visuals.transformRight(0.2, 0., 0.5, 5::second);
+    0 => sceneState.running;
+    Log.debug("Ramping up FM params, waiting in middle");
+    Utils.ramp([wind.fmEnvL, wind.fmEnvR], 5::second, 1.) => now;
+    ((5 - (performerId - 1)) * 10)::second => now;
 
-    Log.debug("Ramp noise down");
-    Utils.ramp([wind.noiseEnvL, wind.noiseEnvR], 20::second, 0.) => now;
+
+    Log.debug("Wait movement + tether release");
+    20::second => now;
     Log.debug("Done with Scene 1");
 
     // Scene 2 handles stopping this shred
@@ -136,13 +151,25 @@ fun void scene1Sounds(State sceneState) {
 }
 
 
-fun void scene1Movement(State sceneState) {
+fun void scene1Movement(State sceneState, int performerId) {
+    // Wait depending on performer id
+
+    now => time start;
+
+    "Scene 1 - Wait" => visuals.updateText;
+    ((performerId - 1) * 10)::second => now;
+    "Scene 1 - Raise Tethers" => visuals.updateText;
+
     spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 10::second);
     spork ~ visuals.transformRight(0.2, 1.5, 0.5, 10::second);
     10::second => now;
 
+    "Scene 1 - Rotate Clockwise" => visuals.updateText;
+
     SinOsc x(0.2) => blackhole;
     SinOsc y(0.2) => blackhole;
+
+    5::second => x.period => y.period;
     0.25 => y.phase;
 
     while (sceneState.running) {
@@ -154,14 +181,43 @@ fun void scene1Movement(State sceneState) {
         10::ms => now;
     }
 
+    "Scene 1 - Move to Middle" => visuals.updateText;
+    spork ~ visuals.transformLeft(-0.2, 0., 0.5, 5::second);
+    spork ~ visuals.transformRight(0.2, 0., 0.5, 5::second);
+    5::second => now;
+
+    "Scene 1 - Hold in Middle" => visuals.updateText;
+    ((5 - (performerId - 1)) * 10)::second => now;
+
+    "Scene 1 - Move tethers" => visuals.updateText;
+
+    [1.5, 0., 0., 0., -1.5] @=> float xs[];
+    [0., 1.5, -1.5, 1.5, 0.] @=> float ys[];
+    spork ~ visuals.transformLeft(xs[performerId - 1] - 0.2, ys[performerId - 1], 0.5, 5::second);
+    spork ~ visuals.transformRight(xs[performerId - 1] + 0.2, ys[performerId - 1], 0.5, 5::second);
+    5::second => now;
+
+    "Scene 1 - Prepare to Release" => visuals.updateText;
+    spork ~ visuals.countdown(5);
+    5::second => now;
+
+    "Scene 1 - Release tether!" => visuals.updateText;
+    spork ~ visuals.transformLeft(-0.2, 0., -15., 1::second);
+    spork ~ visuals.transformRight(0.2, 0., -15., 1::second);
+    5::second => now;
+
+
+    <<< "TOTAL TIME IN SECS:", (now - start) / 1::second >>>;
+
     // Scene 2 handles stopping this shred
+    "Scene 1 - Wait" => visuals.updateText;
     eon => now;
 }
 
 
 // Scene 1
-spork ~ scene1Sounds(scene1) @=> Shred scene1SoundsShred;
-spork ~ scene1Movement(scene1) @=> Shred scene1MovementShred;
+spork ~ scene1Sounds(scene1, performerId) @=> Shred scene1SoundsShred;
+spork ~ scene1Movement(scene1, performerId) @=> Shred scene1MovementShred;
 
 Log.print("Waiting for state change");
 Globals.stateChange => now;

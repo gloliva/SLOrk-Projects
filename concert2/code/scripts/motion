@@ -23,9 +23,9 @@ if [ "$1" = "solo" ]; then
   SwitchAudioSource -s "GreggSlorkDevice"
   chuck --adc:7 --dac:7 --in:4 --out:22 solo/main.ck:1
 elif [ "$1" = "group" ]; then
-  chuck -c6 group/main.ck
+  chuck -c6 group/main.ck:$2:0
 elif [ "$1" = "group-leader" ]; then
-  chuck -c6 group/main.ck:1
+  chuck -c6 group/main.ck:1:1
 else
   echo "First argument should be either 'solo' or 'group'"
 fi

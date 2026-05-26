@@ -49,7 +49,6 @@ public class OscReceiver {
         while (true) {
             this.in => now;
             while (this.in.recv(this.msg)) {
-                <<< "Addr:", this.msg.address, "Value:", this.msg.getInt(0) >>>;
                 if (this.msg.address == "/state") {
                     this.msg.getInt(0) => int state;
                     if (state > this.currState) {
