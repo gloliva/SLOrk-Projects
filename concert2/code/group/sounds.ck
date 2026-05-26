@@ -75,6 +75,9 @@ public class Vibe {
     int triggerL;
     int triggerR;
 
+    int modulateSilence;
+    20::ms => dur silenceDur;
+
     fun @construct() {
 
         10::ms => chL.baseDelay => chR.baseDelay;
@@ -99,7 +102,11 @@ public class Vibe {
             0. => oscR.gain;
             0. => pulseL.gain;
             0. => pulseR.gain;
-            20::ms => now;
+
+            now => time start;
+            while (now < start + this.silenceDur) {
+                1::ms => now;
+            }
         }
     }
 
@@ -117,6 +124,10 @@ public class Vibe {
     fun void swell(float yL, float yR) {
         Std.scalef(yL, -1., 1., 1., 0.2) => this.chL.modDepth;
         Std.scalef(yR, -1., 1., 0.1, 2.) => this.chR.modDepth;
+
+        if (modulateSilence) {
+            Std.scalef(yL, -1., 1., 1000, 4)::ms => this.silenceDur;
+        }
     }
 
     fun void trigger(float zL, float zR) {

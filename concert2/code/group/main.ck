@@ -269,8 +269,8 @@ spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
 Log.print("Waiting for state change");
 Globals.stateChange => now;
 
-spork ~ visuals.transformLeft(0.0, 0., -5., 5::second);
-spork ~ visuals.transformRight(0.0, 0., -5., 5::second);
+spork ~ visuals.transformLeft(-0.2, 0., -15., 5::second);
+spork ~ visuals.transformRight(0.2, 0., -15., 5::second);
 5::second => now;
 
 
@@ -280,7 +280,42 @@ Globals.stateChange => now;
 
 // Scene 4
 Log.print("Scene 4");
-Utils.ramp([vibe.L, vibe.R], 10::second, 0.);
+"Scene 4 - Pull back" => visuals.updateText;
+1 => vibe.modulateSilence;
+
+spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
+spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
+5::second => now;
+
+"Scene 4 - Slow movements" => visuals.updateText;
+if (performerId == 1 || performerId == 2) {
+    spork ~ visuals.transformLeft(1.3, 0., 0.5, 30::second);
+    spork ~ visuals.transformRight(1.7, 0., 0.5, 30::second);
+    30::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 30::second);
+    spork ~ visuals.transformRight(0.2, 1.5, 0.5, 30::second);
+    30::second => now;
+} else if (performerId == 3) {
+    spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 60::second);
+    spork ~ visuals.transformRight(0.2, 1.5, 0.5, 60::second);
+    60::second => now;
+
+} else if (performerId == 4 || performerId == 5) {
+    spork ~ visuals.transformLeft(-1.7, 0., 0.5, 30::second);
+    spork ~ visuals.transformRight(-1.3, 0., 0.5, 30::second);
+    30::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 30::second);
+    spork ~ visuals.transformRight(0.2, 1.5, 0.5, 30::second);
+    30::second => now;
+}
+
+
+"Scene 4 - Prepare to release" => visuals.updateText;
+spork ~ visuals.countdown(5);
+5::second => now;
+
 
 Log.print("Waiting for state change");
 Globals.stateChange => now;
