@@ -7,6 +7,8 @@ public class Visuals {
     GText leftInfo;
     GText rightInfo;
 
+    GPlane xAxis;
+    GPlane yAxis;
 
     GSphere left;
     GSphere right;
@@ -42,10 +44,26 @@ public class Visuals {
         -1.4 => rightInfo.posY;
         rightInfo --> GG.scene();
 
+        // Axes
+        -15. => xAxis.posZ;
+        -15. => yAxis.posZ;
+        @(13., 0.1, 1.) => xAxis.sca;
+        @(0.1, 13., 1.) => yAxis.sca;
+        @(0.1, 0.1, 0.1) => xAxis.color;
+        @(0.1, 0.1, 0.1) => yAxis.color;
+        "X Axis" => xAxis.name;
+        "Y Axis" => yAxis.name;
+
+        xAxis --> GG.scene();
+        yAxis --> GG.scene();
+
+        // GT Tethers
         @(0.3, 0.3, 0.3) => left.sca;
         @(0.3, 0.3, 0.3) => right.sca;
         Color.RED => left.color;
         Color.GREEN => right.color;
+        "Left Tether" => left.name;
+        "Right Tether" => right.name;
 
         left --> GG.scene();
         right --> GG.scene();

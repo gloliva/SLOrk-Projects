@@ -21,7 +21,20 @@ pushd ~/slork/users/gregg/bing2026
 if [ "$1" = "solo" ]; then
   chump install Range > /dev/null 2>&1
   SwitchAudioSource -s "GreggSlorkDevice"
-  chuck --adc:7 --dac:7 --in:4 --out:22 solo/main.ck:1
+
+  DEVICE_NAME="MacBook Pro Speakers"
+  DEVICE_ID=$(chuck --probe 2>&1 | LC_ALL=C \
+    grep -A1 "audio device:" | \
+    grep -B1 "$DEVICE_NAME" | \
+    grep "audio device:" | \
+    sed 's/.*audio device: \([0-9]*\).*/\1/')
+
+  if [ -z "$DEVICE_ID" ]; then
+    echo "Error: Audio device matching '$DEVICE_NAME' not found"
+    exit 1
+  fi
+
+  chuck --adc:$DEVICE_ID --dac:$DEVICE_ID --in:4 --out:22 solo/main.ck:1
 elif [ "$1" = "group" ]; then
   chuck -c6 group/main.ck:$2:0
 elif [ "$1" = "group-leader" ]; then
