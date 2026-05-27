@@ -1,5 +1,6 @@
 @import {"../lib/gametrak.ck", "../lib/keyboard.ck"}
 @import {"../lib/logger.ck", "../lib/osc.ck", "../lib/utils.ck"}
+@import "../visuals.ck"
 @import "Range"
 
 

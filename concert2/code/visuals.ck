@@ -1,4 +1,4 @@
-@import "../lib/globals.ck"
+@import "lib/globals.ck"
 
 
 public class Visuals {
