@@ -182,12 +182,19 @@ fun void scene1Movement(State sceneState, int performerId) {
         10::ms => now;
     }
 
-    "Scene 1 - Move to Middle" => visuals.updateText;
-    spork ~ visuals.transformLeft(-0.2, 0., 0.5, 5::second);
-    spork ~ visuals.transformRight(0.2, 0., 0.5, 5::second);
+    if (performerId == 2 || performerId == 4) {
+        "Scene 1 - Hold Position" => visuals.updateText;
+    } else {
+        "Scene 1 - Move to Middle" => visuals.updateText;
+        spork ~ visuals.transformLeft(-0.2, 0., 0.5, 5::second);
+        spork ~ visuals.transformRight(0.2, 0., 0.5, 5::second);
+    }
     5::second => now;
 
-    "Scene 1 - Move tethers" => visuals.updateText;
+    if (performerId != 2 && performerId != 4) {
+        "Scene 1 - Move tethers" => visuals.updateText;
+    }
+
     [1.5, 0., 0., 0., -1.5] @=> float xs[];
     [0., 1.5, -1.5, 1.5, 0.] @=> float ys[];
     spork ~ visuals.transformLeft(xs[performerId - 1] - 0.2, ys[performerId - 1], 0.5, 5::second);
@@ -198,7 +205,7 @@ fun void scene1Movement(State sceneState, int performerId) {
     spork ~ visuals.countdown(5);
     5::second => now;
 
-    "Scene 1 - Release tether!" => visuals.updateText;
+    "Scene 1 - Release tethers!" => visuals.updateText;
     spork ~ visuals.transformLeft(-0.2, 0., -15., 1::second);
     spork ~ visuals.transformRight(0.2, 0., -15., 1::second);
     5::second => now;
@@ -221,7 +228,7 @@ Globals.stateChange => now;
 
 
 // Scene 2 --> 3 Transition
-"Scene Transition 2 --> 3" => visuals.updateText;
+"Scene Transition - Hold tethers low" => visuals.updateText;
 Globals.stateChange => now;
 
 

@@ -10,6 +10,14 @@ public class Utils {
         }
     }
 
+    fun static void unmap(UGen left[], UGen right[], vec2 mappings[]) {
+        for (vec2 mapping : mappings) {
+            (mapping.x)$int => int leftIdx;
+            (mapping.y)$int => int rightIdx;
+            left[leftIdx] =< right[rightIdx];
+        }
+    }
+
     fun static dur ramp(Envelope envs[], dur fade, float val) {
         for (Envelope env : envs) {
             env.ramp(fade, val);

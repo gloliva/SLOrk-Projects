@@ -6,8 +6,10 @@
 
 // Command-line arguments
 int runOnHemi;
+int skipToScene;
 if (me.args()) {
     me.arg(0) => Std.atoi => runOnHemi;
+    me.arg(1) => Std.atoi => skipToScene;
 }
 Log.debug("Running with hemi? " + runOnHemi);
 Log.debug("Number of dac channels " + dac.channels());
@@ -68,9 +70,6 @@ if (!gt.good()) me.exit();
 Log.print("GameTrak connected");
 
 
-// Init OSC
-
-
 // State Change Management: Local + OSC
 public class ButtonLock {
     int locked;
@@ -128,7 +127,7 @@ Step volume(0.) => Envelope scene2Env => dac.chan(15);
 Envelope mixer[Globals.NUM_ES8_OUTPUTS];
 Range range[GameTrak.NUM_AXES + GameTrak.NUM_BUTTONS];
 
-// Connect mixer to DAC - skip ES8 inputs
+// Connect mixer to DAC - these are the ES8 outputs, NOT audio interface / HEMI outputs
 for (int chan; chan < Globals.NUM_ES8_OUTPUTS; chan++) {
     mixer[chan] => dac.chan(chan);
 }
@@ -144,13 +143,22 @@ Visuals visuals;
 "Solo" => visuals.updateId;
 
 
+// Init scene 4 pulse
+PulseOsc pulse(0.2) => Envelope pulseEnv;
+0.3 => pulse.gain;
+
+
 fun void gtHandler() {
     int unlocked;
 
     while (true) {
         gt.outs[GameTrak.LEFT_Z].next() => volume.next;
+        Std.scalef(gt.outs[GameTrak.LEFT_X].next(), -1., 1., 5., 0.01) => pulse.freq;
 
         if (!unlocked && gt.outs[GameTrak.LEFT_Z].next() > 0.3 && gt.outs[GameTrak.RIGHT_Z].next() > 0.3) {
+            Log.print("Removing button map");
+            Utils.ramp(mixer, [2], 1::second, 0.);
+
             Log.print("Unlocking button state");
             0 => buttonLock.locked;
             1 => unlocked;
@@ -180,6 +188,8 @@ Log.print("Locking button state");
 1 => buttonLock.locked;
 
 // Scene 1
+now => time pieceLength;
+now => time sceneLength;
 Log.print("Scene 1");
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 5::second, 1.);
 scene1Env.ramp(5::second, 1.);
@@ -196,6 +206,9 @@ spork ~ visuals.countdown(5);
 "Scene 1 - Pull Tether!" => visuals.updateText;
 5::second => now;
 
+
+<<< "Scene 1 Length in seconds:", (now - sceneLength) / 1::second >>>;
+now => sceneLength;
 
 
 // Scene 2
@@ -220,6 +233,9 @@ Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11), @(6, 2)]);
 "Transition done - waiting" => visuals.updateText;
 Globals.stateChange => now;
 
+<<< "Scene 2 Length in seconds:", (now - sceneLength) / 1::second >>>;
+now => sceneLength;
+
 // Scene 3
 repeat (5) {
     "Scene 3 - Wait" => visuals.updateText;
@@ -235,21 +251,45 @@ repeat (5) {
 "Scene 3 - Waiting to transition" => visuals.updateText;
 Globals.stateChange => now;
 
+<<< "Scene 3 Length in seconds:", (now - sceneLength) / 1::second >>>;
+now => sceneLength;
+
 // Scene 4
+// Lock button event press again and remap button to ES8
 1 => buttonLock.locked;
 Log.print("Scene 4");
 "Scene 4 - Performing!" => visuals.updateText;
+
+// Ramp up pulse
+Utils.map([pulseEnv], mixer, [@(0, 0)]);
+pulseEnv.ramp(10::second, 1.);
+
 (-1., 1., 0., 1.) => range[3].range;
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 20::second, 1.);
 
 scene1Env.ramp(15::second, 1.);
 scene2Env.ramp(15::second, 0.3);
 
-80::second => now;
+spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
+spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
+5::second => now;
+spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 60::second);
+spork ~ visuals.transformRight(0.2, 1.5, 0.5, 60::second);
+65::second => now;
+
+"Scene 4 - Prepare to release" => visuals.updateText;
+spork ~ visuals.countdown(5);
+5::second => now;
+
 "Scene 4 - End the piece" => visuals.updateText;
+scene2Env.ramp(5::second, 0.);
+pulseEnv.ramp(5::second, 0.);
 0 => buttonLock.locked;
 
 Globals.stateChange => now;
+
+<<< "Scene 4 Length in seconds:", (now - sceneLength) / 1::second >>>;
+<<< "Total Length in seconds:", (now - pieceLength) / 1::second >>>;
 
 
 // End
