@@ -224,54 +224,130 @@ Log.print("Scene 3");
 "Scene 3 - Wait" => visuals.updateText;
 Utils.ramp([vibe.L, vibe.R], 5::second, 1.);
 
+// Reset just in case
+visuals.updateLeft(-0.2, 0., -15);
+visuals.updateRight(0.2, 0., -15);
 
-// Middle performer
-if (performerId == 3) {
+
+// Gesture 1 - Middle performer
+if (performerId == 3 || oscSender) {
     "Scene 3 - Performing" => visuals.updateText;
-    spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 2::second);
-    spork ~ visuals.transformRight(0.2, -1.5, 0.5, 2::second);
-    5::second => now;
+    spork ~ visuals.transformLeft(-0.2, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(0.2, 0.0, 0.5, 2::second);
+    2.5::second => now;
 
-    spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 2::second);
-    spork ~ visuals.transformRight(0.2, 1.5, 0.5, 2::second);
-    2::second => now;
+    spork ~ visuals.transformLeft(-1.5, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(1.5, 0.0, 0.5, 2::second);
+    2.5::second => now;
 
     spork ~ visuals.transformLeft(-0.2, 0., -15., 2::second);
     spork ~ visuals.transformRight(0.2, 0., -15., 2::second);
-    3::second => now;
 
     // Wait for response
-    10::second => now;
+    2::second => now;
+    "Scene 3 - Wait" => visuals.updateText;
+    13::second => now;
 
 } else {
     "Scene 3 - Wait" => visuals.updateText;
     20::second => now;
 }
 
+// Gesture 2 - Middle performer
+if (performerId == 3 || oscSender) {
+    "Scene 3 - Performing" => visuals.updateText;
+    spork ~ visuals.transformLeft(-1.5, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(1.5, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(0.2, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 0., -15., 2::second);
+    spork ~ visuals.transformRight(0.2, 0., -15., 2::second);
+
+    // Wait for response
+    2::second => now;
+    "Scene 3 - Wait" => visuals.updateText;
+    13::second => now;
+
+} else {
+    "Scene 3 - Wait" => visuals.updateText;
+    20::second => now;
+}
+
+// Gesture 3 - Side performers, 1 and 5
+if (performerId == 1 || performerId == 5 || oscSender) {
+    "Scene 3 - Performing" => visuals.updateText;
+    spork ~ visuals.transformLeft(-1.7, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(-1.3, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(1.3, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(1.7, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 0., -15., 2::second);
+    spork ~ visuals.transformRight(0.2, 0., -15., 2::second);
+
+    // Wait for response
+    2::second => now;
+    "Scene 3 - Wait" => visuals.updateText;
+    13::second => now;
+
+} else {
+    "Scene 3 - Wait" => visuals.updateText;
+    20::second => now;
+}
+
+
+// Gesture 5 - Middle sides, 2 and 4
+if (performerId == 2 || performerId == 4 || oscSender) {
+    "Scene 3 - Performing" => visuals.updateText;
+    spork ~ visuals.transformLeft(1.3, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(1.7, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(-1.7, 0.0, 0.5, 2::second);
+    spork ~ visuals.transformRight(-1.3, 0.0, 0.5, 2::second);
+    2.5::second => now;
+
+    spork ~ visuals.transformLeft(-0.2, 0., -15., 2::second);
+    spork ~ visuals.transformRight(0.2, 0., -15., 2::second);
+
+    // Wait for response
+    2::second => now;
+    "Scene 3 - Wait" => visuals.updateText;
+    13::second => now;
+
+} else {
+    "Scene 3 - Wait" => visuals.updateText;
+    20::second => now;
+}
+
+
+// Gesture 6 - everyone
+"Scene 3 - Performing" => visuals.updateText;
+
 spork ~ visuals.transformLeft(-1.7, 0., 0.5, 5::second);
 spork ~ visuals.transformRight(-1.3, 0., 0.5, 5::second);
-20::second => now;
-
-spork ~ visuals.transformRight(1.7, 0., 0.5, 5::second);
-20::second => now;
-
-spork ~ visuals.transformRight(0.2, 1.5, 0.5, 5::second);
-20::second => now;
-
-spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 5::second);
-20::second => now;
-
-spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
-spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
-20::second => now;
-
-
-Log.print("Waiting for state change");
-Globals.stateChange => now;
-
-spork ~ visuals.transformLeft(-0.2, 0., -15., 5::second);
-spork ~ visuals.transformRight(0.2, 0., -15., 5::second);
 5::second => now;
+
+SinOsc x(0.2) => blackhole;
+SinOsc y(0.2) => blackhole;
+4::second => x.period => y.period;
+0.75 => x.phase;
+
+now => time start;
+while (now < start + 3::second) {
+    Std.scalef(x.last(), -1., 1., -1.5, 1.5) => float x;
+    Std.scalef(y.last(), -1., 1., -1.5, 1.5) => float y;
+
+    visuals.updateLeft(x - 0.2, y, 0.5);
+    visuals.updateRight(x + 0.2 , y, 0.5);
+    10::ms => now;
+}
 
 
 Log.print("Waiting for state change");
@@ -311,10 +387,20 @@ if (performerId == 1 || performerId == 2) {
     30::second => now;
 }
 
+"Scene 4 - Hold" => visuals.updateText;
+5::second => now;
 
 "Scene 4 - Prepare to release" => visuals.updateText;
 spork ~ visuals.countdown(5);
 5::second => now;
+
+
+"Scene 4 - Release tether!" => visuals.updateText;
+spork ~ visuals.transformLeft(-0.2, 0., -15., 1::second);
+spork ~ visuals.transformRight(0.2, 0., -15., 1::second);
+5::second => now;
+
+"End" => visuals.updateText;
 
 
 Log.print("Waiting for state change");
