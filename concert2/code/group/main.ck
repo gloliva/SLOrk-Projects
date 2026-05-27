@@ -78,8 +78,8 @@ fun void noSoloStateHandler() {
 
     while (true) {
         gt.buttonPress => now;
-        Globals.stateChange.broadcast();
         spork ~ sender.send("/state", state);
+        Globals.stateChange.broadcast();
         state++;
     }
 } spork ~ noSoloStateHandler();
@@ -113,7 +113,6 @@ visuals.updateLeft(-0.2, 0., -15);
 visuals.updateRight(0.2, 0., -15);
 Log.debug("Waiting to start...");
 Globals.stateChange => now;
-
 
 State scene1;
 1 => scene1.running;
@@ -220,6 +219,11 @@ Log.print("Waiting for state change");
 Globals.stateChange => now;
 
 
+// Scene 2 --> 3 Transition
+"Scene Transition 2 --> 3" => visuals.updateText;
+Globals.stateChange => now;
+
+
 // Scene 3
 Log.print("Scene 3");
 "Scene 3 - Wait" => visuals.updateText;
@@ -303,7 +307,7 @@ if (performerId == 1 || performerId == 5 || oscSender) {
 }
 
 
-// Gesture 5 - Middle sides, 2 and 4
+// Gesture 4 - Middle sides, 2 and 4
 if (performerId == 2 || performerId == 4 || oscSender) {
     "Scene 3 - Performing" => visuals.updateText;
     spork ~ visuals.transformLeft(1.3, 0.0, 0.5, 2::second);
@@ -328,7 +332,7 @@ if (performerId == 2 || performerId == 4 || oscSender) {
 }
 
 
-// Gesture 6 - everyone
+// Gesture 5 - everyone
 "Scene 3 - Performing" => visuals.updateText;
 
 spork ~ visuals.transformLeft(-1.7, 0., 0.5, 5::second);
@@ -350,14 +354,16 @@ while (now < start + 3::second) {
     10::ms => now;
 }
 
-
+"Scene 3 - Drop tether Z slightly" => visuals.updateText;
+spork ~ visuals.transformLeft(-0.2, -1.5, -10, 5::second);
+spork ~ visuals.transformRight(0.2, -1.5, -10, 5::second);
 Log.print("Waiting for state change");
 Globals.stateChange => now;
 
 
 // Scene 4
 Log.print("Scene 4");
-"Scene 4 - Pull back" => visuals.updateText;
+"Scene 4 - Pull out tether again" => visuals.updateText;
 1 => vibe.modulateSilence;
 
 spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);

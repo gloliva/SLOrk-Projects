@@ -62,26 +62,61 @@ if (runOnHemi) {
 }
 
 
+// Init GameTrak
+GameTrak gt(0);
+if (!gt.good()) me.exit();
+Log.print("GameTrak connected");
+
+
+// Init OSC
+
+
 // State Change Management: Local + OSC
-fun void stateHandler() {
-    // Init keyboard
-    Utils.getKeyboardDeviceId() => int id;
-    Keyboard kb(id);
+public class ButtonLock {
+    int locked;
+}
+ButtonLock buttonLock;
+
+
+fun void stateHandler(ButtonLock buttonLock) {
 
     // Init OSC
     OscSender sender;
     1 => int state;
 
     while (true) {
-        kb.event => now;
+        gt.buttonPress => now;
 
-        if (kb.event.state == KeyboardEvent.DOWN && kb.event.data == Keyboard.SPACE_BAR) {
+        // if not locked, trigger event
+        // otherwise ignore
+        if (!buttonLock.locked) {
             Globals.stateChange.broadcast();
             spork ~ sender.send("/state", state);
             state++;
         }
     }
-} spork ~ stateHandler();
+} spork ~ stateHandler(buttonLock);
+
+
+fun void emergencyStateHandler() {
+    // Init keyboard
+    Utils.getKeyboardDeviceId() => int id;
+    Keyboard kb(id);
+
+    // // Init OSC
+    // OscSender sender;
+    // 1 => int state;
+
+    while (true) {
+        kb.event => now;
+
+        if (kb.event.state == KeyboardEvent.DOWN && kb.event.data == Keyboard.SPACE_BAR) {
+            Globals.stateChange.broadcast();
+            // spork ~ sender.send("/state", state);
+            // state++;
+        }
+    }
+} spork ~ emergencyStateHandler();
 
 
 // Envelope handling for Eurorack inputs
@@ -93,25 +128,33 @@ Step volume(0.) => Envelope scene2Env => dac.chan(15);
 Envelope mixer[Globals.NUM_ES8_OUTPUTS];
 Range range[GameTrak.NUM_AXES + GameTrak.NUM_BUTTONS];
 
+// Connect mixer to DAC - skip ES8 inputs
 for (int chan; chan < Globals.NUM_ES8_OUTPUTS; chan++) {
     mixer[chan] => dac.chan(chan);
 }
 
-
-// Init GameTrak
-GameTrak gt(0);
-if (!gt.good()) me.exit();
-Log.print("GameTrak connected");
-
-
+// Connect GameTrak to range
 for (int i; i < gt.outs.size(); i++) {
     gt.outs[i] => range[i];
 }
 
 
+// Init Visuals
+Visuals visuals;
+
+
 fun void gtHandler() {
+    int unlocked;
+
     while (true) {
         gt.outs[GameTrak.LEFT_Z].next() => volume.next;
+
+        if (!unlocked && gt.outs[GameTrak.LEFT_Z].next() > 0.3 && gt.outs[GameTrak.RIGHT_Z].next() > 0.3) {
+            Log.print("Unlocking button state");
+            0 => buttonLock.locked;
+            1 => unlocked;
+        }
+
         10::ms => now;
     }
 } spork ~ gtHandler();
@@ -128,9 +171,12 @@ fun void gtHandler() {
 
 
 // Initial state
+visuals.updateLeft(-0.2, 0., -15);
+visuals.updateRight(0.2, 0., -15);
 Log.print("Waiting to start...");
 Globals.stateChange => now;
-
+Log.print("Locking button state");
+1 => buttonLock.locked;
 
 // Scene 1
 Log.print("Scene 1");
@@ -139,11 +185,27 @@ scene1Env.ramp(5::second, 1.);
 
 (-1., 1., 0., 1.) => range[3].range;
 Utils.map(range, mixer, [@(2, 0), @(0, 1), @(6, 2), @(5, 3), @(3, 4), @(2, 5)]);
-Globals.stateChange => now;
+
+
+"Scene 1 - Wait" => visuals.updateText;
+95::second => now;
+"Scene 1 - Prepare to Pull Tether" => visuals.updateText;
+spork ~ visuals.countdown(5);
+5::second => now;
+"Scene 1 - Pull Tether!" => visuals.updateText;
+5::second => now;
+
 
 
 // Scene 2
 Log.print("Scene 2");
+"Scene 2 - Performing" => visuals.updateText;
+Globals.stateChange => now;
+
+
+// Scene 2 --> 3 Transition
+Log.print("Scene 2 Transition");
+"Scene 2 --> 3" => visuals.updateText;
 Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 0.);
 Utils.ramp(mixer, [8, 9, 10, 11], 15::second, 1.);
 
@@ -152,22 +214,39 @@ scene2Env.ramp(15::second, 1.);
 
 (-1., 1., -1., 1.) => range[3].range;
 Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11), @(6, 2)]);
-Globals.stateChange => now;
+15::second => now;
 
+"Transition done - waiting" => visuals.updateText;
+Globals.stateChange => now;
 
 // Scene 3
-// Nothing changes
-Log.print("Scene 3");
+repeat (5) {
+    "Scene 3 - Wait" => visuals.updateText;
+    5::second => now;
+    "Scene 3 - Go!" => visuals.updateText;
+    10::second => now;
+    "Scene 3 - Prepare to stop" => visuals.updateText;
+    spork ~ visuals.countdown(5);
+    5::second => now;
+}
+
+
+"Scene 3 - Waiting to transition" => visuals.updateText;
 Globals.stateChange => now;
 
-
 // Scene 4
+1 => buttonLock.locked;
 Log.print("Scene 4");
+"Scene 4 - Performing!" => visuals.updateText;
 (-1., 1., 0., 1.) => range[3].range;
-Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 15::second, 1.);
+Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 20::second, 1.);
 
 scene1Env.ramp(15::second, 1.);
-scene2Env.ramp(15::second, 0.);
+scene2Env.ramp(15::second, 0.3);
+
+80::second => now;
+"Scene 4 - End the piece" => visuals.updateText;
+0 => buttonLock.locked;
 
 Globals.stateChange => now;
 
