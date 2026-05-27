@@ -26,6 +26,7 @@ Log.print("GameTrak connected");
 
 // Init Visuals
 Visuals visuals;
+performerId => visuals.updateId;
 
 
 // Init OSC Receiver

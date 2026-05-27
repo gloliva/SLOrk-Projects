@@ -6,6 +6,7 @@ public class Visuals {
     GText countdownInfo;
     GText leftInfo;
     GText rightInfo;
+    GText idInfo;
 
     GPlane xAxis;
     GPlane yAxis;
@@ -29,6 +30,12 @@ public class Visuals {
 
         0.3 => countdownInfo.size;
         @(5., 5., 5.) => countdownInfo.color;
+
+        "ID: ?" =>idInfo.text;
+        0.2 => idInfo.size;
+        @(-2.2, 1.8, 0.) => idInfo.pos;
+        @(5., 5., 5.) => idInfo.color;
+        idInfo --> GG.scene();
 
         "Left" => leftInfo.text;
         Color.RED => leftInfo.color;
@@ -93,6 +100,14 @@ public class Visuals {
 
     fun void updateText(string text) {
         text => this.sceneInfo.text;
+    }
+
+    fun void updateId(int id) {
+        "ID: " + Std.itoa(id) => idInfo.text;
+    }
+
+    fun void updateId(string id) {
+        "ID: " + id => idInfo.text;
     }
 
     fun void countdown(int numSeconds) {

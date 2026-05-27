@@ -90,8 +90,8 @@ fun void stateHandler(ButtonLock buttonLock) {
         // if not locked, trigger event
         // otherwise ignore
         if (!buttonLock.locked) {
-            Globals.stateChange.broadcast();
             spork ~ sender.send("/state", state);
+            Globals.stateChange.broadcast();
             state++;
         }
     }
@@ -141,6 +141,7 @@ for (int i; i < gt.outs.size(); i++) {
 
 // Init Visuals
 Visuals visuals;
+"Solo" => visuals.updateId;
 
 
 fun void gtHandler() {
