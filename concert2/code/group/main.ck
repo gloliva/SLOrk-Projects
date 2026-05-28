@@ -299,8 +299,8 @@ if (startFromScene <= 3) {
         20::second => now;
     }
 
-    // Gesture 3 - Side performers, 1 and 5
-    if (performerId == 1 || performerId == 5 || oscSender) {
+    // Gesture 3 - Side performers, 1 and 2
+    if (performerId == 1 || performerId == 2 || oscSender) {
         "Scene 3 - Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(-1.7, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(-1.3, 0.0, 0.5, 2::second);
@@ -324,8 +324,8 @@ if (startFromScene <= 3) {
     }
 
 
-    // Gesture 4 - Middle sides, 2 and 4
-    if (performerId == 2 || performerId == 4 || oscSender) {
+    // Gesture 4 - Side performers, 4 and 5
+    if (performerId == 4 || performerId == 5 || oscSender) {
         "Scene 3 - Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(1.3, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(1.7, 0.0, 0.5, 2::second);
