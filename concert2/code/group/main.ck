@@ -362,7 +362,7 @@ while (now < start + 3::second) {
     10::ms => now;
 }
 
-"Scene 3 - Drop tether Z slightly" => visuals.updateText;
+"Scene 3 - Drop slightly, still hold" => visuals.updateText;
 spork ~ visuals.transformLeft(-0.2, -1.5, -10, 5::second);
 spork ~ visuals.transformRight(0.2, -1.5, -10, 5::second);
 Log.print("Waiting for state change");
