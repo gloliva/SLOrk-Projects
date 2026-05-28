@@ -19,7 +19,7 @@ public class Visuals {
 
     fun @construct() {
         // Setup scene
-        // GWindow.fullscreen();
+        GWindow.fullscreen();
         Color.BLACK => GG.scene().backgroundColor;
 
         "Waiting to start" => sceneInfo.text;
@@ -80,22 +80,7 @@ public class Visuals {
             rightMovement[i] => blackhole;
         }
 
-        // spork ~ this.stateHandler();
         spork ~ this.run();
-    }
-
-    fun void stateHandler() {
-        Globals.stateChange => now;
-        "Scene 1" => sceneInfo.text;
-
-        Globals.stateChange => now;
-        "Scene 2 - No movement" => sceneInfo.text;
-
-        Globals.stateChange => now;
-        "Scene 3" => sceneInfo.text;
-
-        Globals.stateChange => now;
-        "Scene 4" => sceneInfo.text;
     }
 
     fun void updateText(string text) {
