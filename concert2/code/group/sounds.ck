@@ -87,6 +87,10 @@ public class Vibe {
         0.5 => revL.mix => revR.mix;
         0.3 => revL.gain => revR.gain;
 
+        // Adjust gains
+        0.4 => chL.gain => chR.gain;
+        0.4 => envL.gain => envL.gain;
+
         spork ~ this.run();
     }
 

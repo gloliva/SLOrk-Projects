@@ -8,10 +8,12 @@
 int performerId;
 int oscSender;
 int startFromScene;
+int useSub;
 if (me.args()) {
     me.arg(0) => Std.atoi => performerId;
     me.arg(1) => Std.atoi => oscSender;
     me.arg(2) => Std.atoi => startFromScene;
+    me.arg(3) => Std.atoi => useSub;
 }
 
 if (performerId < 1 || performerId > 5) {
@@ -40,10 +42,15 @@ if (!oscSender) {
 
 // Init sounds
 Wind wind(performerId);
-Utils.stereoToDac(wind.L, wind.R);
+Utils.stereoToDac(wind.L, wind.R, useSub);
 
 Vibe vibe();
-Utils.stereoToDac(vibe.L, vibe.R);
+Utils.stereoToDac(vibe.L, vibe.R, useSub);
+
+if (useSub) {
+    Utils.stereoToSub(wind.L, wind.R);
+    Utils.stereoToSub(vibe.L, vibe.R);
+}
 
 
 // State Change Management: Local + OSC
@@ -216,7 +223,6 @@ fun void scene1Movement(State sceneState, int performerId) {
 
 
 // Scene 1
-
 if (startFromScene <= 1) {
     spork ~ scene1Sounds(scene1, performerId);
     scene1Movement(scene1, performerId);
@@ -224,7 +230,6 @@ if (startFromScene <= 1) {
 
 
 // Scene 2
-
 if (startFromScene <= 2) {
 
     Log.print("Scene 2");
@@ -235,6 +240,7 @@ if (startFromScene <= 2) {
     Globals.stateChange => now;
 }
 
+// Scene 3
 if (startFromScene <= 3) {
     // Scene 2 --> 3 Transition
     "Scene Transition - Hold tethers low" => visuals.updateText;

@@ -22,7 +22,7 @@ if [ "$1" = "solo" ]; then
   chump install Range > /dev/null 2>&1
   SwitchAudioSource -s "GreggSlorkDevice"
 
-  DEVICE_NAME="MacBook Pro Speakers"
+  DEVICE_NAME="GreggSlorkDevice"
   DEVICE_ID=$(chuck --probe 2>&1 | LC_ALL=C \
     grep -A1 "audio device:" | \
     grep -B1 "$DEVICE_NAME" | \
@@ -36,7 +36,9 @@ if [ "$1" = "solo" ]; then
 
   chuck --adc:$DEVICE_ID --dac:$DEVICE_ID --in:4 --out:22 solo/main.ck:1
 elif [ "$1" = "group" ]; then
-  chuck -c6 group/main.ck:$2:0
+  chuck -c8 group/main.ck:$2:0:0:1
+elif [ "$1" = "group-no-bass" ]; then
+  chuck -c6 group/main.ck:$2:0:0:0
 elif [ "$1" = "group-skip" ]; then
   chuck -c6 group/main.ck:$2:0:2
 elif [ "$1" = "group-leader" ]; then

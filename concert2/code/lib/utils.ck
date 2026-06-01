@@ -53,32 +53,46 @@ public class Utils {
         return fade;
     }
 
-    fun static void stereoToDac(UGen L, UGen R) {
-        Utils.stereoToDac(L, R, 0);
+    fun static void stereoToDac(UGen L, UGen R, int useSub) {
+        Utils.stereoToDac(L, R, useSub, 0);
     }
 
-    fun static void stereoToDac(UGen L, UGen R, int offset) {
+    fun static void stereoToDac(UGen L, UGen R, int useSub, int offset) {
         // If not running on hemi, connect to stereo
-        if (dac.channels() <= Globals.NUM_HEMI_CHANS) {
+        if (dac.channels() <= offset + Globals.NUM_HEMI_CHANS) {
             L => dac.left;
             R => dac.right;
         } else {
             // Connect to Hemi's 6 channels
             for (int i; i < Globals.NUM_HEMI_CHANS / 2; i++) {
                 Log.debug("Connecting L chan to index " + (offset + (i * 2)) + " and R chan to index " + (offset + ((i * 2) + 1)));
-                L => dac.chan(offset + (i * 2));
-                R => dac.chan(offset + ((i * 2) + 1));
+
+                // If using a subwoofer, add a high pass filter her for the Hemis
+                if (useSub) {
+                    L => HPF filterL(100.) => dac.chan(offset + (i * 2));
+                    R => HPF filterR(100.) => dac.chan(offset + ((i * 2) + 1));
+                } else {
+                    L => dac.chan(offset + (i * 2));
+                    R => dac.chan(offset + ((i * 2) + 1));
+                }
             }
         }
     }
 
     fun static void stereoToSub(UGen L, UGen R) {
+        Utils.stereoToSub(L, R, 0);
+    }
+
+    fun static void stereoToSub(UGen L, UGen R, int offset) {
         // If not running with Hemi (6 channels) + Subwoofer (2 channels), just ignore
         // TODO: connect to stereo, and change other function to HPF at the same cutoff frequency
-        if (dac.channels() < (Globals.NUM_HEMI_CHANS + Globals.NUM_SUB_CHANS)) return;
+        if (dac.channels() < (Globals.NUM_HEMI_CHANS + Globals.NUM_SUB_CHANS)) {
+            Log.error("Not enough channels for subwoofer");
+            return;
+        }
 
-        L => LPF filterL(100.) => dac.chan(7);
-        R => LPF filterR(100.) => dac.chan(8);
+        L => LPF filterL(100.) => dac.chan(offset + 6);
+        R => LPF filterR(100.) => dac.chan(offset + 7);
     }
 
     fun static int getKeyboardDeviceId() {
