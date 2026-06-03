@@ -15,7 +15,7 @@ if (me.args()) {
     me.arg(2) => Std.atoi => useSub;
     me.arg(3) => Std.atoi => numHemisToUse;
 }
-Log.debug("Running with hemi? " + runOnHemi + " | Num hemis to use? " + numHemisToUse);
+Log.debug("Running with hemi? " + runOnHemi + " | Num hemis to use? " + numHemisToUse + " | Running with subwoofer? " + useSub);
 Log.debug("Number of dac channels " + dac.channels());
 
 
@@ -72,6 +72,8 @@ if (runOnHemi) {
         Log.print("Connecting Eurorack output to Hemi number:", hemiNum);
         Utils.stereoToDac(eurorackInputs[0], eurorackInputs[1], useSub, Globals.NUM_ES8_OUTPUTS + (hemiNum * Globals.NUM_HEMI_TOTAL_CHANS));
         if (useSub) {
+            100. => Globals.hemis[0].freq => Globals.hemis[1].freq;
+            100. => Globals.subs[0].freq => Globals.subs[1].freq;
             Utils.stereoToSub(eurorackInputs[0], eurorackInputs[1], Globals.NUM_ES8_OUTPUTS + (hemiNum * Globals.NUM_HEMI_TOTAL_CHANS));
         }
     }
@@ -96,6 +98,8 @@ Log.print("GameTrak connected");
 
 
 // State Change Management: Local + OSC
+int CURR_SCENE;
+
 public class ButtonLock {
     int locked;
 }
@@ -146,7 +150,7 @@ fun void emergencyStateHandler() {
 fun void gainAdjuster() {
     while (true) {
         // Some magic numbers for the ES8's third input, this is the uncallibrated range
-        Std.scalef(adc.chan(2).last(), -0.47, 0.54, 0.5, 2.) => float gain;
+        Std.scalef(adc.chan(2).last(), -0.47, 0.54, 0.2, 2.) => float gain;
         gain => eurorackInputs[0].gain => eurorackInputs[1].gain;
         10::ms => now;
     }
@@ -230,6 +234,7 @@ now => time sceneLength;
 // Scene 1
 if (startFromScene <= 1) {
     Log.print("Scene 1");
+    1 => CURR_SCENE;
     Utils.ramp(mixer, [0, 1, 2, 3, 4, 5], 5::second, 1.);
     scene1Env.ramp(5::second, 1.);
 
@@ -254,6 +259,7 @@ if (startFromScene <= 1) {
 // Scene 2
 if (startFromScene <= 2) {
     Log.print("Scene 2");
+    2 => CURR_SCENE;
     "Scene 2 - Performing" => visuals.updateText;
     Globals.stateChange => now;
 
@@ -280,6 +286,7 @@ if (startFromScene <= 2) {
 
 // Scene 3
 if (startFromScene <= 3) {
+    3 => CURR_SCENE;
     repeat (5) {
         "Scene 3 - Wait" => visuals.updateText;
         5::second => now;
@@ -299,7 +306,7 @@ if (startFromScene <= 3) {
 } else {
     // Add mappings that occur at earlier stages
     Utils.map(range, mixer, [@(2, 0), @(0, 1), @(6, 2), @(5, 3), @(3, 4), @(2, 5)]);
-    Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11), @(6, 2)]);
+    Utils.map(range, mixer, [@(0, 8), @(1, 9), @(3, 10), @(4, 11)]);
     Utils.ramp(mixer, [8, 9, 10, 11], 1::second, 1.);
 }
 
@@ -307,6 +314,7 @@ if (startFromScene <= 3) {
 // Lock button event press again and remap button to ES8
 1 => buttonLock.locked;
 Log.print("Scene 4");
+4 => CURR_SCENE;
 "Scene 4 - Performing!" => visuals.updateText;
 
 // Ramp up pulse

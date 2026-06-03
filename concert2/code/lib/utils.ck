@@ -69,8 +69,8 @@ public class Utils {
 
                 // If using a subwoofer, add a high pass filter her for the Hemis
                 if (useSub) {
-                    L => HPF filterL(100.) => dac.chan(offset + (i * 2));
-                    R => HPF filterR(100.) => dac.chan(offset + ((i * 2) + 1));
+                    L => Globals.hemis[0] => dac.chan(offset + (i * 2));
+                    R => Globals.hemis[1] => dac.chan(offset + ((i * 2) + 1));
                 } else {
                     L => dac.chan(offset + (i * 2));
                     R => dac.chan(offset + ((i * 2) + 1));
@@ -91,8 +91,8 @@ public class Utils {
             return;
         }
 
-        L => LPF filterL(100.) => dac.chan(offset + 6);
-        R => LPF filterR(100.) => dac.chan(offset + 7);
+        L => Globals.subs[0] => dac.chan(offset + 6);
+        R => Globals.subs[1] => dac.chan(offset + 7);
     }
 
     fun static int getKeyboardDeviceId() {

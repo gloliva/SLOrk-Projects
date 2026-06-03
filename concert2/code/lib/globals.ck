@@ -8,8 +8,8 @@ public class Globals {
     2 => static int NUM_HEMI_UNUSED_CHANS;
     Globals.NUM_HEMI_CHANS + Globals.NUM_SUB_CHANS + Globals.NUM_HEMI_UNUSED_CHANS => static int NUM_HEMI_TOTAL_CHANS;
 
-    static HPF hemis[Globals.NUM_HEMI_CHANS];
-    static LPF subs[Globals.NUM_SUB_CHANS];
+    static HPF hemis[2];
+    static LPF subs[2];
 
     // Events
     static Event stateChange;

@@ -1,8 +1,10 @@
 #!/bin/bash
 #
+chump install Range > /dev/null 2>&1
 networksetup -setairportpower en0 off
 osascript -e "set volume alert volume 0"
 osascript -e "set Volume 5"
+SwitchAudioSource -s "MCHStreamer I2S TosLink"
 
 # 1. Define the command or function to run on Ctrl+C
 cleanup() {
@@ -19,7 +21,6 @@ trap cleanup SIGINT
 pushd ~/slork/users/gregg/bing2026
 
 if [ "$1" = "solo" ]; then
-  chump install Range > /dev/null 2>&1
   SwitchAudioSource -s "GreggSlorkDevice"
 
   DEVICE_NAME="GreggSlorkDevice"
@@ -34,7 +35,36 @@ if [ "$1" = "solo" ]; then
     exit 1
   fi
 
-  chuck --adc:$DEVICE_ID --dac:$DEVICE_ID --in:4 --out:22 solo/main.ck:1
+  chuck --adc:$DEVICE_ID --dac:$DEVICE_ID --in:4 --out:24 solo/main.ck:1:0:$2:1
+elif [ "$1" = "hemi" ]; then
+  HEMI_NAME="MCHStreamer"
+  HEMI_ID=$(chuck --probe 2>&1 | LC_ALL=C \
+    grep -A1 "audio device:" | \
+    grep -B1 "$HEMI_NAME" | \
+    grep "audio device:" | \
+    sed 's/.*audio device: \([0-9]*\).*/\1/')
+
+  if [ -z "$HEMI_ID" ]; then
+    echo "Error: Audio device matching '$HEMI_NAME' not found"
+    exit 1
+  fi
+
+  echo $HEMI_ID
+
+  INTERFACE_NAME="AudioBox"
+  INTERFACE_ID=$(chuck --probe 2>&1 | LC_ALL=C \
+    grep -A1 "audio device:" | \
+    grep -B1 "$INTERFACE_NAME" | \
+    grep "audio device:" | \
+    sed 's/.*audio device: \([0-9]*\).*/\1/')
+
+  if [ -z "$INTERFACE_ID" ]; then
+    echo "Error: Audio device matching '$INTERFACE_NAME' not found"
+    exit 1
+  fi
+
+  echo $INTERFACE_ID
+  #chuck --in:2 --adc:$INTERFACE_ID --out:8 --dac:$HEMI_ID solo/hemis.ck:$2
 elif [ "$1" = "group" ]; then
   chuck -c8 group/main.ck:$2:0:0:1
 elif [ "$1" = "group-no-bass" ]; then
@@ -44,7 +74,7 @@ elif [ "$1" = "group-skip" ]; then
 elif [ "$1" = "group-leader" ]; then
   chuck -c6 group/main.ck:1:1:$2
 else
-  echo "First argument should be either 'solo' or 'group'"
+  echo "First argument should be either 'solo', 'group', or 'hemi'"
 fi
 
 
