@@ -64,7 +64,7 @@ elif [ "$1" = "hemi" ]; then
   fi
 
   echo $INTERFACE_ID
-  #chuck --in:2 --adc:$INTERFACE_ID --out:8 --dac:$HEMI_ID solo/hemis.ck:$2
+  chuck --in:2 --adc:$INTERFACE_ID --out:8 --dac:$HEMI_ID solo/hemis.ck:$2
 elif [ "$1" = "group" ]; then
   chuck -c8 group/main.ck:$2:0:0:1
 elif [ "$1" = "group-no-bass" ]; then
@@ -72,7 +72,7 @@ elif [ "$1" = "group-no-bass" ]; then
 elif [ "$1" = "group-skip" ]; then
   chuck -c6 group/main.ck:$2:0:2
 elif [ "$1" = "group-leader" ]; then
-  chuck -c6 group/main.ck:1:1:$2
+  chuck -c6 group/main.ck:1:1:$2:$3
 else
   echo "First argument should be either 'solo', 'group', or 'hemi'"
 fi
