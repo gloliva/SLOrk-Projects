@@ -9,12 +9,19 @@ int performerId;
 int oscSender;
 int startFromScene;
 int useSub;
+0.6 => float tonesGain;
 if (me.args()) {
     me.arg(0) => Std.atoi => performerId;
     me.arg(1) => Std.atoi => oscSender;
     me.arg(2) => Std.atoi => startFromScene;
     me.arg(3) => Std.atoi => useSub;
+    me.arg(4) => Std.atof => tonesGain;
 }
+
+if (tonesGain <= 0.0) {
+    0.6 => tonesGain;
+}
+Log.debug("ID: " + performerId + " | gain: " + tonesGain);
 
 if (performerId < 1 || performerId > 5) {
     Log.error("Performer ID set to incorrect value: " + performerId);
@@ -31,17 +38,19 @@ Log.print("GameTrak connected");
 // Init Visuals
 Visuals visuals;
 performerId => visuals.updateId;
+0 => visuals.updateScene;
 
 
 // Init OSC Receiver
 if (!oscSender) {
-    OscReceiver receiver(Globals.stateChange);
+    OscReceiver receiver(Globals.stateChange, Globals.connectionConfirmation);
     spork ~ receiver.listen();
 }
 
 
 // Init sounds
 Wind wind(performerId);
+tonesGain => wind.sinOscGain;
 Utils.stereoToDac(wind.L, wind.R, useSub);
 
 Vibe vibe();
@@ -67,6 +76,7 @@ fun void emergencyStateHandler() {
         kb.event => now;
 
         if (kb.event.state == KeyboardEvent.DOWN && kb.event.data == Keyboard.SPACE_BAR) {
+            Globals.connectionConfirmation.broadcast();
             Globals.stateChange.broadcast();
 
             if (oscSender) {
@@ -121,7 +131,12 @@ fun void gtHandler() {
 // Initial state
 visuals.updateLeft(-0.2, 0., -15);
 visuals.updateRight(0.2, 0., -15);
-Log.debug("Waiting to start...");
+Log.debug("Not Connected");
+
+"Not connected!" => visuals.updateText;
+Globals.connectionConfirmation => now;
+
+"Connected - Give thumbs up" => visuals.updateText;
 Globals.stateChange => now;
 
 State scene1;
@@ -166,15 +181,16 @@ fun void scene1Movement(State sceneState, int performerId) {
     now => time start;
 
     // Wait depending on performer id
-    "Scene 1 - Wait" => visuals.updateText;
+    1 => visuals.updateScene;
+    "Kneel - Wait" => visuals.updateText;
     ((performerId - 1) * 10)::second => now;
-    "Scene 1 - Raise Tethers" => visuals.updateText;
+    "Stand and Raise Tethers" => visuals.updateText;
 
     spork ~ visuals.transformLeft(-0.2, 1.5, 0.5, 10::second);
     spork ~ visuals.transformRight(0.2, 1.5, 0.5, 10::second);
     10::second => now;
 
-    "Scene 1 - Rotate Clockwise" => visuals.updateText;
+    "Rotate Clockwise" => visuals.updateText;
 
     SinOsc x(0.2) => blackhole;
     SinOsc y(0.2) => blackhole;
@@ -192,16 +208,16 @@ fun void scene1Movement(State sceneState, int performerId) {
     }
 
     if (performerId == 2 || performerId == 4) {
-        "Scene 1 - Hold Position" => visuals.updateText;
+        "Hold Position" => visuals.updateText;
     } else {
-        "Scene 1 - Move to Middle" => visuals.updateText;
+        "Move to Middle" => visuals.updateText;
         spork ~ visuals.transformLeft(-0.2, 0., 0.5, 5::second);
         spork ~ visuals.transformRight(0.2, 0., 0.5, 5::second);
     }
     5::second => now;
 
     if (performerId != 2 && performerId != 4) {
-        "Scene 1 - Move tethers" => visuals.updateText;
+        "Move tethers" => visuals.updateText;
     }
 
     [1.5, 0., 0., 0., -1.5] @=> float xs[];
@@ -210,11 +226,11 @@ fun void scene1Movement(State sceneState, int performerId) {
     spork ~ visuals.transformRight(xs[performerId - 1] + 0.2, ys[performerId - 1], 0.5, 5::second);
     10::second => now;
 
-    "Scene 1 - Prepare to Release" => visuals.updateText;
+    "Prepare to Release" => visuals.updateText;
     spork ~ visuals.countdown(5);
     5::second => now;
 
-    "Scene 1 - Release tethers!" => visuals.updateText;
+    "Release tethers and kneel" => visuals.updateText;
     spork ~ visuals.transformLeft(-0.2, 0., -15., 1::second);
     spork ~ visuals.transformRight(0.2, 0., -15., 1::second);
     5::second => now;
@@ -233,7 +249,8 @@ if (startFromScene <= 1) {
 if (startFromScene <= 2) {
 
     Log.print("Scene 2");
-    "Scene 2 - Wait" => visuals.updateText;
+    2 => visuals.updateScene;
+    "Kneel - Wait" => visuals.updateText;
     Utils.ramp([wind.L, wind.R], 5::second, 0.);
 
     Log.print("Waiting for state change");
@@ -243,13 +260,15 @@ if (startFromScene <= 2) {
 // Scene 3
 if (startFromScene <= 3) {
     // Scene 2 --> 3 Transition
-    "Scene Transition - Hold tethers low" => visuals.updateText;
+    "2 --> 3" => visuals.updateScene;
+    "Stand - Hold tethers low" => visuals.updateText;
     Globals.stateChange => now;
 
 
     // Scene 3
     Log.print("Scene 3");
-    "Scene 3 - Wait" => visuals.updateText;
+    "3" => visuals.updateScene;
+    "Wait" => visuals.updateText;
     Utils.ramp([vibe.L, vibe.R], 5::second, 1.);
 
     // Reset just in case
@@ -259,7 +278,7 @@ if (startFromScene <= 3) {
 
     // Gesture 1 - Middle performer
     if (performerId == 3 || oscSender) {
-        "Scene 3 - Performing" => visuals.updateText;
+        "Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(-0.2, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(0.2, 0.0, 0.5, 2::second);
         2.5::second => now;
@@ -273,17 +292,17 @@ if (startFromScene <= 3) {
 
         // Wait for response
         2::second => now;
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         13::second => now;
 
     } else {
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         20::second => now;
     }
 
     // Gesture 2 - Middle performer
     if (performerId == 3 || oscSender) {
-        "Scene 3 - Performing" => visuals.updateText;
+        "Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(-1.5, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(1.5, 0.0, 0.5, 2::second);
         2.5::second => now;
@@ -297,17 +316,17 @@ if (startFromScene <= 3) {
 
         // Wait for response
         2::second => now;
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         13::second => now;
 
     } else {
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         20::second => now;
     }
 
     // Gesture 3 - Side performers, 1 and 2
     if (performerId == 1 || performerId == 2 || oscSender) {
-        "Scene 3 - Performing" => visuals.updateText;
+        "Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(-1.7, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(-1.3, 0.0, 0.5, 2::second);
         2.5::second => now;
@@ -321,18 +340,18 @@ if (startFromScene <= 3) {
 
         // Wait for response
         2::second => now;
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         13::second => now;
 
     } else {
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         20::second => now;
     }
 
 
     // Gesture 4 - Side performers, 4 and 5
     if (performerId == 4 || performerId == 5 || oscSender) {
-        "Scene 3 - Performing" => visuals.updateText;
+        "Performing" => visuals.updateText;
         spork ~ visuals.transformLeft(1.3, 0.0, 0.5, 2::second);
         spork ~ visuals.transformRight(1.7, 0.0, 0.5, 2::second);
         2.5::second => now;
@@ -346,17 +365,17 @@ if (startFromScene <= 3) {
 
         // Wait for response
         2::second => now;
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         13::second => now;
 
     } else {
-        "Scene 3 - Wait" => visuals.updateText;
+        "Wait" => visuals.updateText;
         20::second => now;
     }
 
 
     // Gesture 5 - everyone
-    "Scene 3 - Performing" => visuals.updateText;
+    "Performing" => visuals.updateText;
 
     spork ~ visuals.transformLeft(-1.7, 0., 0.5, 5::second);
     spork ~ visuals.transformRight(-1.3, 0., 0.5, 5::second);
@@ -377,7 +396,7 @@ if (startFromScene <= 3) {
         10::ms => now;
     }
 
-    "Scene 3 - Drop slightly, still hold" => visuals.updateText;
+    "Drop tethers slightly - hold" => visuals.updateText;
     spork ~ visuals.transformLeft(-0.2, -1.5, -10, 5::second);
     spork ~ visuals.transformRight(0.2, -1.5, -10, 5::second);
     Log.print("Waiting for state change");
@@ -387,14 +406,15 @@ if (startFromScene <= 3) {
 
 // Scene 4
 Log.print("Scene 4");
-"Scene 4 - Pull out tether again" => visuals.updateText;
+4 => visuals.updateScene;
+"Pull out tether again" => visuals.updateText;
 1 => vibe.modulateSilence;
 
 spork ~ visuals.transformLeft(-0.2, -1.5, 0.5, 5::second);
 spork ~ visuals.transformRight(0.2, -1.5, 0.5, 5::second);
 5::second => now;
 
-"Scene 4 - Slow movements" => visuals.updateText;
+"Slow movements" => visuals.updateText;
 if (performerId == 1 || performerId == 2) {
     spork ~ visuals.transformLeft(1.3, 0., 0.5, 30::second);
     spork ~ visuals.transformRight(1.7, 0., 0.5, 30::second);
@@ -418,20 +438,21 @@ if (performerId == 1 || performerId == 2) {
     30::second => now;
 }
 
-"Scene 4 - Hold" => visuals.updateText;
+"Hold" => visuals.updateText;
 5::second => now;
 
-"Scene 4 - Prepare to release" => visuals.updateText;
+"Prepare to release" => visuals.updateText;
 spork ~ visuals.countdown(5);
 5::second => now;
 
 
-"Scene 4 - Release tether!" => visuals.updateText;
+"Release and kneel" => visuals.updateText;
 spork ~ visuals.transformLeft(-0.2, 0., -15., 1::second);
 spork ~ visuals.transformRight(0.2, 0., -15., 1::second);
 5::second => now;
 
-"End" => visuals.updateText;
+"End" => visuals.updateScene;
+"Stay Kneeling - End" => visuals.updateText;
 
 
 Log.print("Waiting for state change");

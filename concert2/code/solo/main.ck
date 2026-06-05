@@ -96,6 +96,10 @@ GameTrak gt(0);
 if (!gt.good()) me.exit();
 Log.print("GameTrak connected");
 
+// Init OSC
+OscSender sender;
+sender.send("/connectionTest", 1);
+
 
 // State Change Management: Local + OSC
 int CURR_SCENE;
@@ -106,10 +110,9 @@ public class ButtonLock {
 ButtonLock buttonLock;
 
 
-fun void stateHandler(ButtonLock buttonLock) {
+fun void stateHandler(OscSender sender, ButtonLock buttonLock) {
 
     // Init OSC
-    OscSender sender;
     1 => int state;
 
     while (true) {
@@ -123,7 +126,7 @@ fun void stateHandler(ButtonLock buttonLock) {
             state++;
         }
     }
-} spork ~ stateHandler(buttonLock);
+} spork ~ stateHandler(sender, buttonLock);
 
 
 fun void emergencyStateHandler() {

@@ -21,7 +21,8 @@ public class Wind {
         id => this.performerId;
         800 + (100 * id) => this.baseFreq;
 
-        0.3 => sL.gain => sR.gain;
+        0.2 => sL.gain => sR.gain;
+        0.6 => sinEnvL.gain => sinEnvR.gain;
     }
 
     fun void freq(float xL, float xR) {
@@ -49,6 +50,10 @@ public class Wind {
     fun void gain(float zL, float zR) {
         Math.clampf(zL, 0., 1.) => this.L.gain;
         Math.clampf(zR, 0., 1.) => this.R.gain;
+    }
+
+    fun void sinOscGain(float g) {
+        g => sinEnvL.gain => sinEnvR.gain;
     }
 }
 

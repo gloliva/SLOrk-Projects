@@ -66,7 +66,7 @@ elif [ "$1" = "hemi" ]; then
   echo $INTERFACE_ID
   chuck --in:2 --adc:$INTERFACE_ID --out:8 --dac:$HEMI_ID solo/hemis.ck:$2
 elif [ "$1" = "group" ]; then
-  chuck -c8 group/main.ck:$2:0:0:1
+  chuck -c8 group/main.ck:$2:0:0:1:$3
 elif [ "$1" = "group-no-bass" ]; then
   chuck -c6 group/main.ck:$2:0:0:0
 elif [ "$1" = "group-skip" ]; then

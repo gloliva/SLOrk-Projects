@@ -13,4 +13,5 @@ public class Globals {
 
     // Events
     static Event stateChange;
+    static Event connectionConfirmation;
 }

@@ -7,6 +7,7 @@ public class Visuals {
     GText leftInfo;
     GText rightInfo;
     GText idInfo;
+    GText sceneNum;
 
     GPlane xAxis;
     GPlane yAxis;
@@ -23,7 +24,7 @@ public class Visuals {
         Color.BLACK => GG.scene().backgroundColor;
 
         "Waiting to start" => sceneInfo.text;
-        0.25 => sceneInfo.size;
+        0.22 => sceneInfo.size;
         -1.8 => sceneInfo.posY;
         @(5., 5., 5.) => sceneInfo.color;
         sceneInfo --> GG.scene();
@@ -31,11 +32,17 @@ public class Visuals {
         0.3 => countdownInfo.size;
         @(5., 5., 5.) => countdownInfo.color;
 
-        "ID: ?" =>idInfo.text;
+        "ID: ?" => idInfo.text;
         0.2 => idInfo.size;
         @(-2.2, 1.8, 0.) => idInfo.pos;
         @(5., 5., 5.) => idInfo.color;
         idInfo --> GG.scene();
+
+        "Scene: ?" => sceneNum.text;
+        0.2 => sceneNum.size;
+        @(2., 1.8, 0.) => sceneNum.pos;
+        @(5., 5., 5.) => sceneNum.color;
+        sceneNum --> GG.scene();
 
         "Left" => leftInfo.text;
         Color.RED => leftInfo.color;
@@ -93,6 +100,14 @@ public class Visuals {
 
     fun void updateId(string id) {
         "ID: " + id => idInfo.text;
+    }
+
+    fun void updateScene(int num) {
+        "Scene: " + Std.itoa(num) => sceneNum.text;
+    }
+
+    fun void updateScene(string sceneTxt) {
+        "Scene: " + sceneTxt => sceneNum.text;
     }
 
     fun void countdown(int numSeconds) {

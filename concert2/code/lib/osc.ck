@@ -32,10 +32,13 @@ public class OscReceiver {
 
     // State management
     Event @ stateChange;
+    Event @ connectionConfirmation;
     int currState;
+    int isConnected;
 
-    fun @construct(Event stateChange) {
+    fun @construct(Event stateChange, Event connectionConfirmation) {
         stateChange @=> this.stateChange;
+        connectionConfirmation @=> this.connectionConfirmation;
         OscReceiver(this.DEFAULT_PORT);
     }
 
@@ -55,6 +58,9 @@ public class OscReceiver {
                         this.stateChange.broadcast();
                         state => this.currState;
                     }
+                } else if (!this.isConnected && this.msg.address == "/connectionTest") {
+                    this.connectionConfirmation.broadcast;
+                    1 => this.isConnected;
                 }
             }
         }
